@@ -16,7 +16,7 @@
             <a href="/" class="logo">shvm-db</a>
             <div class="links">
                 <a href="/#vision">Philosophy</a>
-                <a href="/#architecture">Architecture</a>
+                <a href="/#scaling">Scaling</a>
                 <a href="docs.html" style="color: #fff;">Docs</a>
                 <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
             </div>
@@ -30,11 +30,11 @@
                     <li><a href="#testing">Testing Guide</a></li>
                     <li><a href="#examples">Code Examples</a></li>
                 </ul>
-                <h3>API Reference</h3>
+                <h3>Architecture</h3>
                 <ul>
-                    <li><a href="#putitem">PutItem</a></li>
-                    <li><a href="#getitem">GetItem</a></li>
-                    <li><a href="#query">Query</a></li>
+                    <li><a href="#partitioning">Partitioning</a></li>
+                    <li><a href="#concurrency">Concurrency</a></li>
+                    <li><a href="#consistency">Consistency</a></li>
                 </ul>
             </aside>
 
@@ -74,85 +74,35 @@ curl -X POST https://shvm-db.workers.dev/api \
                         <li>Run <code>npm run dev</code> to start the worker locally on port 8787.</li>
                         <li>Configure your client to point to <code>http://localhost:8787/api</code>.</li>
                     </ol>
-
-                    <h3>Using AWS SDK (v3)</h3>
-                    <p>Here is how to configure the AWS SDK to talk to shvm-db:</p>
-                    <pre><code class="language-javascript">import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
-
-const client = new DynamoDBClient({
-    region: "us-east-1", // Region doesn't matter
-    endpoint: "http://localhost:8787/api", // Or your worker URL
-    credentials: {
-        accessKeyId: "dummy",
-        secretAccessKey: "dummy"
-    }
-});
-
-// Run a command
-await client.send(new PutItemCommand({
-    TableName: "Test",
-    Item: {
-        PK: { S: "test_pk" },
-        SK: { S: "test_sk" }
-    }
-}));</code></pre>
                 </section>
 
-                <section id="examples">
-                    <h2>Code Examples</h2>
+                <section id="partitioning">
+                    <h2>Partitioning Strategy</h2>
+                    <p>Our partitioning model is designed to handle extreme scale by dynamically adjusting the range of
+                        keys served by each Durable Object.</p>
 
-                    <div id="putitem">
-                        <h3>PutItem</h3>
-                        <p>Creates or replaces an item. Supports partition key (PK) and sort key (SK).</p>
-                        <pre><code class="language-javascript">// Fetch API Example
-fetch("https://your-worker.dev/api", {
-    method: "POST",
-    headers: {
-        "x-amz-target": "DynamoDB_20120810.PutItem",
-        "Content-Type": "application/x-amz-json-1.0"
-    },
-    body: JSON.stringify({
-        TableName: "AnyTable",
-        Item: {
-            PK: { S: "user_123" },
-            SK: { S: "meta" },
-            email: { S: "alice@example.com" }
-        }
-    })
-});</code></pre>
-                    </div>
+                    <h3>Recursive Splitting</h3>
+                    <p>Every partition starts covering the entire Sort Key range `(-inf, +inf)` for a given Partition
+                        Key. As write traffic increases beyond a threshold (e.g., 1000 WCU), the partition splits into
+                        two child partitions:</p>
+                    <ul>
+                        <li>Child A: `(-inf, split_key)`</li>
+                        <li>Child B: `(split_key, +inf)`</li>
+                    </ul>
+                    <p>The splitting is transparent to the client. The Worker Router caches the partition map and
+                        directs requests to the correct child Durable Object.</p>
+                </section>
 
-                    <div id="getitem">
-                        <h3>GetItem</h3>
-                        <p>Retrieves a single item by primary key.</p>
-                        <pre><code class="language-javascript">fetch("https://your-worker.dev/api", {
-    method: "POST",
-    headers: {
-        "x-amz-target": "DynamoDB_20120810.GetItem",
-        // ...
-    },
-    body: JSON.stringify({
-        TableName: "AnyTable",
-        Key: {
-            PK: { S: "user_123" },
-            SK: { S: "meta" }
-        }
-    })
-});</code></pre>
-                    </div>
+                <section id="concurrency">
+                    <h2>Concurrency Control</h2>
+                    <p>Because each partition is single-threaded (JavaScript event loop), writes are naturally
+                        serialized. This guarantees <strong>Strong Consistency</strong> for reads and writes within a
+                        partition.</p>
 
-                    <div id="query">
-                        <h3>Query</h3>
-                        <p>Find items with a shared Partition Key.</p>
-                        <pre><code class="language-javascript">// Query all items for user_123
-{
-    TableName: "AnyTable",
-    KeyConditionExpression: "PK = :pk",
-    ExpressionAttributeValues: {
-        ":pk": { S: "user_123" }
-    }
-}</code></pre>
-                    </div>
+                    <h3>Conditional Writes</h3>
+                    <p>We support standard DynamoDB `ConditionExpression` syntax. Internally, this is implemented by
+                        checking the condition within the same SQLite transaction as the write operation. This provides
+                        atomic check-and-set semantics without explicit locking overhead.</p>
                 </section>
 
                 <footer>
