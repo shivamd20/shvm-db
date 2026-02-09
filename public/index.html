@@ -1,20 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Hello, World!</title>
-	</head>
-	<body>
-		<h1 id="heading"></h1>
-		<p>This page comes from a static asset stored at `public/index.html` as configured in `wrangler.jsonc`.</p>
-		<script>
-			fetch('/message')
-				.then((resp) => resp.text())
-				.then((text) => {
-					const h1 = document.getElementById('heading');
-					h1.textContent = text;
-				});
-		</script>
-	</body>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>shvm-db - The Anti-Magic Database</title>
+    <meta name="description"
+        content="A DynamoDB-compatible database built on Cloudflare Durable Objects. No magic. Just physics.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&family=Fira+Code&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="logo">shvm-db</a>
+            <div class="links">
+                <a href="#vision">Philosophy</a>
+                <a href="#architecture">Architecture</a>
+                <a href="docs.html">Docs</a>
+                <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero">
+                <h1>Demystifying<br><span class="gradient-text">DynamoDB</span></h1>
+                <p class="subtitle">A distributed database built from first principles on Cloudflare Durable Objects.
+                    Exact API compatibility with zero magic.</p>
+                <div class="cta-group">
+                    <a href="docs.html" class="btn primary">Get Started</a>
+                    <a href="#architecture" class="btn secondary">How it Works</a>
+                </div>
+                <div class="badge">
+                    <span>Alpha Release v0.1.0</span>
+                </div>
+            </section>
+
+            <section id="vision" class="vision-section">
+                <div class="vision-grid">
+                    <div class="vision-content">
+                        <h2>The Vision</h2>
+                        <p>DynamoDB scales to absurd throughput not because of magic, but because of <strong>brutal
+                                operational discipline</strong>. shvm-db forces you to understand these physics by
+                            rebuilding them yourself.</p>
+                        <h3>Core Principles</h3>
+                        <ul class="vision-list">
+                            <li><strong>Exact Parity:</strong> PutItem, GetItem, Query—same semantics, same constraints.
+                            </li>
+                            <li><strong>Single Writer:</strong> One partition key maps to exactly one Durable Object.
+                            </li>
+                            <li><strong>Zero Layers:</strong> No hidden caches. SQLite is the only source of truth.</li>
+                            <li><strong>Pay-per-Request:</strong> Scale to zero when idle, scale to infinity when hot.
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="vision-image">
+                        <!-- Placeholder for visual if needed, using code block for effect -->
+                        <pre><code class="language-javascript">// It's just an API call.
+await client.send(new PutItemCommand({
+  TableName: "Users",
+  Item: {
+    PK: { S: "user_123" },
+    SK: { S: "profile" },
+    role: { S: "engineer" }
+  }
+}));</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section id="architecture" class="diagram-section">
+                <h2>Architecture & Throughput</h2>
+                <p>We achieve massive throughput by splitting the world into <strong>Micro-Partitions</strong>.</p>
+
+                <div class="diagram-container">
+                    <div class="arch-flow">
+                        <div class="arch-step">
+                            Client
+                            <span class="detail">Any DynamoDB SDK</span>
+                        </div>
+                        <div class="arch-arrow"></div>
+                        <div class="arch-step">
+                            Worker Router
+                            <span class="detail">Hash(PK) → ID</span>
+                        </div>
+                        <div class="arch-arrow"></div>
+                        <div class="arch-step highlight">
+                            Durable Object
+                            <span class="detail">Single Threaded/Partition</span>
+                        </div>
+                        <div class="arch-arrow"></div>
+                        <div class="arch-step">
+                            SQLite
+                            <span class="detail">On-Disk Storage</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="perf-grid">
+                    <div class="perf-item">
+                        <h4>Micro-Partitions</h4>
+                        <p>Each partition is an isolated V8 isolate. 1,000 partitions = 1,000 parallel CPUs.</p>
+                    </div>
+                    <div class="perf-item">
+                        <h4>Latency Targets</h4>
+                        <p>Read: &lt;5ms (Hot), Write: &lt;10ms. Achieving this via in-memory SQLite page caching.</p>
+                    </div>
+                    <div class="perf-item">
+                        <h4>Throughput Roadmap</h4>
+                        <p>Future: In-memory Bloom Filters to skip disk I/O for 404s, and HashMap indexes for O(1)
+                            reads.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="features">
+                <div class="feature-card">
+                    <h3>Zero Magic</h3>
+                    <p>Understanding distributed systems by removing the abstraction layers. One partition = One Durable
+                        Object.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>DynamoDB Compatible</h3>
+                    <p>Drop-in replacement. If it runs on DynamoDB, it runs on shvm-db (eventually).</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Serverless Native</h3>
+                    <p>Built on the edge. No servers to manage, no capacity to provision.</p>
+                </div>
+            </section>
+
+            <footer>
+                <div class="footer-links">
+                    <a href="https://github.com/shivamd20/shvm-db">GitHub</a>
+                    <a href="docs.html">Documentation</a>
+                </div>
+                <p>&copy; 2026 shvm-db. Open Source.</p>
+            </footer>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+
 </html>

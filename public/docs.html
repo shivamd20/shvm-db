@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - shvm-db</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&family=Fira+Code&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="logo">shvm-db</a>
+            <div class="links">
+                <a href="/#vision">Philosophy</a>
+                <a href="/#architecture">Architecture</a>
+                <a href="docs.html" style="color: #fff;">Docs</a>
+                <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
+            </div>
+        </header>
+
+        <main class="docs-layout">
+            <aside class="docs-sidebar">
+                <h3>Getting Started</h3>
+                <ul>
+                    <li><a href="#quickstart" class="active">Quickstart</a></li>
+                    <li><a href="#testing">Testing Guide</a></li>
+                    <li><a href="#examples">Code Examples</a></li>
+                </ul>
+                <h3>API Reference</h3>
+                <ul>
+                    <li><a href="#putitem">PutItem</a></li>
+                    <li><a href="#getitem">GetItem</a></li>
+                    <li><a href="#query">Query</a></li>
+                </ul>
+            </aside>
+
+            <article class="docs-content">
+                <section id="quickstart">
+                    <h1>Documentation</h1>
+                    <p>Welcome to shvm-db documentation. This guide will help you connect to your database instance and
+                        run your first commands.</p>
+
+                    <h2>Quickstart</h2>
+                    <p>All requests to shvm-db follow the DynamoDB JSON protocol. You can use any standard HTTP client
+                        or the official AWS SDK.</p>
+
+                    <h3>Using cURL</h3>
+                    <pre><code class="language-bash"># Create an item
+curl -X POST https://shvm-db.workers.dev/api \
+  -H "x-amz-target: DynamoDB_20120810.PutItem" \
+  -H "Content-Type: application/x-amz-json-1.0" \
+  -d '{
+    "TableName": "Users",
+    "Item": {
+        "PK": {"S": "user_1"},
+        "SK": {"S": "profile"},
+        "name": {"S": "Alice"}
+    }
+  }'</code></pre>
+                </section>
+
+                <section id="testing">
+                    <h2>Testing Guide</h2>
+                    <p>Since shvm-db is API-compatible with DynamoDB, you can run your existing test suites against it
+                        by simply changing the endpoint URL.</p>
+
+                    <h3>Local Testing</h3>
+                    <p>To run tests against a local instance:</p>
+                    <ol style="margin-left: 20px; color: #ccc; margin-bottom: 20px;">
+                        <li>Run <code>npm run dev</code> to start the worker locally on port 8787.</li>
+                        <li>Configure your client to point to <code>http://localhost:8787/api</code>.</li>
+                    </ol>
+
+                    <h3>Using AWS SDK (v3)</h3>
+                    <p>Here is how to configure the AWS SDK to talk to shvm-db:</p>
+                    <pre><code class="language-javascript">import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+
+const client = new DynamoDBClient({
+    region: "us-east-1", // Region doesn't matter
+    endpoint: "http://localhost:8787/api", // Or your worker URL
+    credentials: {
+        accessKeyId: "dummy",
+        secretAccessKey: "dummy"
+    }
+});
+
+// Run a command
+await client.send(new PutItemCommand({
+    TableName: "Test",
+    Item: {
+        PK: { S: "test_pk" },
+        SK: { S: "test_sk" }
+    }
+}));</code></pre>
+                </section>
+
+                <section id="examples">
+                    <h2>Code Examples</h2>
+
+                    <div id="putitem">
+                        <h3>PutItem</h3>
+                        <p>Creates or replaces an item. Supports partition key (PK) and sort key (SK).</p>
+                        <pre><code class="language-javascript">// Fetch API Example
+fetch("https://your-worker.dev/api", {
+    method: "POST",
+    headers: {
+        "x-amz-target": "DynamoDB_20120810.PutItem",
+        "Content-Type": "application/x-amz-json-1.0"
+    },
+    body: JSON.stringify({
+        TableName: "AnyTable",
+        Item: {
+            PK: { S: "user_123" },
+            SK: { S: "meta" },
+            email: { S: "alice@example.com" }
+        }
+    })
+});</code></pre>
+                    </div>
+
+                    <div id="getitem">
+                        <h3>GetItem</h3>
+                        <p>Retrieves a single item by primary key.</p>
+                        <pre><code class="language-javascript">fetch("https://your-worker.dev/api", {
+    method: "POST",
+    headers: {
+        "x-amz-target": "DynamoDB_20120810.GetItem",
+        // ...
+    },
+    body: JSON.stringify({
+        TableName: "AnyTable",
+        Key: {
+            PK: { S: "user_123" },
+            SK: { S: "meta" }
+        }
+    })
+});</code></pre>
+                    </div>
+
+                    <div id="query">
+                        <h3>Query</h3>
+                        <p>Find items with a shared Partition Key.</p>
+                        <pre><code class="language-javascript">// Query all items for user_123
+{
+    TableName: "AnyTable",
+    KeyConditionExpression: "PK = :pk",
+    ExpressionAttributeValues: {
+        ":pk": { S: "user_123" }
+    }
+}</code></pre>
+                    </div>
+                </section>
+
+                <footer>
+                    <p>Need help? Check out the <a href="https://github.com/shivamd20/shvm-db"
+                            style="color: var(--primary-color);">GitHub Repo</a>.</p>
+                </footer>
+            </article>
+        </main>
+    </div>
+</body>
+
+</html>

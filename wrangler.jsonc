@@ -6,7 +6,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "shvm-db",
 	"main": "src/index.ts",
-	"compatibility_date": "2026-02-05",
+	"compatibility_date": "2025-11-28",
 	"migrations": [
 		{
 			"new_sqlite_classes": [
@@ -22,8 +22,8 @@
 	"durable_objects": {
 		"bindings": [
 			{
-				"class_name": "MyDurableObject",
-				"name": "MY_DURABLE_OBJECT"
+				"name": "MY_DURABLE_OBJECT",
+				"class_name": "MyDurableObject"
 			}
 		]
 	},
