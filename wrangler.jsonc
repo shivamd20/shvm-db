@@ -9,6 +9,12 @@
 	"compatibility_date": "2025-11-28",
 	"migrations": [
 		{
+			"new_classes": [
+				"PartitionDO"
+			],
+			"tag": "v1"
+		},
+		{
 			"new_sqlite_classes": [
 				"SubDO"
 			],
@@ -19,12 +25,6 @@
 				"TableRegistryDO"
 			],
 			"tag": "v3"
-		},
-		{
-			"deleted_classes": [
-				"MyDurableObject"
-			],
-			"tag": "v4"
 		}
 	],
 	"assets": {
