@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Interactive playground for shvm-db - Test DynamoDB operations in real-time with network inspection and request history.">
+    <meta name="keywords" content="shvm-db, playground, DynamoDB, API testing, interactive">
+    <title>Playground - shvm-db</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&family=Fira+Code&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="logo">shvm-db</a>
+            <div class="links">
+                <a href="/#vision">Philosophy</a>
+                <a href="/#scaling">Scaling</a>
+                <a href="/#dist-sys">Distributed Systems</a>
+                <a href="/playground.html">Playground</a>
+                <a href="/docs.html">Docs</a>
+                <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
+            </div>
+        </header>
+
+        <div class="ide-container">
+            <div class="ide-main">
+                <!-- Left Panel: Request Builder -->
+                <div class="ide-panel left">
+                    <div class="ide-tabs">
+                        <button class="ide-tab active" data-tab="request">Request</button>
+                        <button class="ide-tab" data-tab="history">History</button>
+                    </div>
+
+                    <div class="ide-content" id="request-panel">
+                        <div class="form-group">
+                            <label for="operation">Operation</label>
+                            <select id="operation" class="form-control">
+                                <option value="PutItem">PutItem</option>
+                                <option value="GetItem">GetItem</option>
+                                <option value="DeleteItem">DeleteItem</option>
+                                <option value="Query">Query (Not Implemented)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="pk">Partition Key (PK)</label>
+                            <input type="text" id="pk" class="form-control" placeholder="e.g., user_123">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sk">Sort Key (SK)</label>
+                            <input type="text" id="sk" class="form-control" placeholder="e.g., profile">
+                        </div>
+
+                        <div class="form-group" id="value-group">
+                            <label for="value">Value (JSON)</label>
+                            <textarea id="value" class="form-control" rows="8"
+                                placeholder='{\n  "name": "Alice",\n  "role": "admin"\n}'></textarea>
+                        </div>
+
+                        <button id="run-btn" class="btn-run">
+                            <span id="run-text">▶ Execute</span>
+                        </button>
+                    </div>
+
+                    <div class="ide-content" id="history-panel" style="display: none; padding: 0;">
+                        <ul class="history-list" id="history-list">
+                            <li style="padding: 20px; text-align: center; color: #666;">No history yet</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Response & Network -->
+                <div class="ide-panel right">
+                    <div class="ide-tabs">
+                        <button class="ide-tab active" data-tab="response">Response</button>
+                        <button class="ide-tab" data-tab="network">Network</button>
+                    </div>
+
+                    <div class="ide-content" id="response-panel">
+                        <div id="response-status" style="margin-bottom: 15px; display: none;">
+                            <span id="status-code" style="font-weight: 600;"></span>
+                            <span id="status-time" style="color: #666; margin-left: 10px;"></span>
+                        </div>
+                        <div class="json-viewer" id="response-viewer">
+                            <span style="color: #666;">Execute a request to see the response...</span>
+                        </div>
+                    </div>
+
+                    <div class="ide-content" id="network-panel" style="display: none; padding: 0;">
+                        <div id="network-list" style="padding: 20px;">
+                            <div style="color: #666; text-align: center;">No network activity yet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let history = [];
+        let networkLog = [];
+        let isLoading = false;
+
+        // DOM Elements
+        const operationSelect = document.getElementById('operation');
+        const pkInput = document.getElementById('pk');
+        const skInput = document.getElementById('sk');
+        const valueTextarea = document.getElementById('value');
+        const valueGroup = document.getElementById('value-group');
+        const runBtn = document.getElementById('run-btn');
+        const runText = document.getElementById('run-text');
+        const responseViewer = document.getElementById('response-viewer');
+        const responseStatus = document.getElementById('response-status');
+        const statusCode = document.getElementById('status-code');
+        const statusTime = document.getElementById('status-time');
+        const historyList = document.getElementById('history-list');
+        const networkList = document.getElementById('network-list');
+
+        // Tab switching
+        document.querySelectorAll('.ide-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                const isLeft = tab.closest('.ide-panel').classList.contains('left');
+
+                // Update active tab
+                tab.closest('.ide-tabs').querySelectorAll('.ide-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Show corresponding panel
+                if (isLeft) {
+                    document.getElementById('request-panel').style.display = tabName === 'request' ? 'block' : 'none';
+                    document.getElementById('history-panel').style.display = tabName === 'history' ? 'block' : 'none';
+                } else {
+                    document.getElementById('response-panel').style.display = tabName === 'response' ? 'block' : 'none';
+                    document.getElementById('network-panel').style.display = tabName === 'network' ? 'block' : 'none';
+                }
+            });
+        });
+
+        // Show/hide value field based on operation
+        operationSelect.addEventListener('change', () => {
+            const op = operationSelect.value;
+            valueGroup.style.display = (op === 'PutItem') ? 'block' : 'none';
+        });
+
+        // Execute request
+        runBtn.addEventListener('click', async () => {
+            if (isLoading) return;
+
+            const operation = operationSelect.value;
+            const pk = pkInput.value.trim();
+            const sk = skInput.value.trim();
+
+            if (!pk || !sk) {
+                alert('Partition Key and Sort Key are required');
+                return;
+            }
+
+            if (operation === 'Query') {
+                alert('Query operation is not implemented in this MVP');
+                return;
+            }
+
+            setLoading(true);
+            const startTime = Date.now();
+
+            try {
+                let payload = {
+                    TableName: 'items',
+                    Key: {
+                        PK: { S: pk },
+                        SK: { S: sk }
+                    }
+                };
+
+                if (operation === 'PutItem') {
+                    const valueStr = valueTextarea.value.trim();
+                    let valObj = {};
+
+                    if (valueStr) {
+                        try {
+                            valObj = JSON.parse(valueStr);
+                        } catch (e) {
+                            alert('Invalid JSON in value field');
+                            setLoading(false);
+                            return;
+                        }
+                    }
+
+                    payload = {
+                        TableName: 'items',
+                        Item: {
+                            PK: { S: pk },
+                            SK: { S: sk },
+                            ...wrapAttributes(valObj)
+                        }
+                    };
+                    delete payload.Key;
+                }
+
+                const response = await fetch('/api', {
+                    method: 'POST',
+                    headers: {
+                        'x-amz-target': `DynamoDB_20120810.${operation}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const duration = Date.now() - startTime;
+                const data = await response.json();
+
+                // Log network activity
+                logNetwork({
+                    method: 'POST',
+                    url: '/api',
+                    operation,
+                    status: response.status,
+                    duration,
+                    request: payload,
+                    response: data
+                });
+
+                // Display response
+                displayResponse(data, response.status, duration);
+
+                // Add to history
+                addToHistory({
+                    operation,
+                    pk,
+                    sk,
+                    timestamp: new Date().toISOString(),
+                    status: response.status
+                });
+
+            } catch (error) {
+                const duration = Date.now() - startTime;
+                displayResponse({ error: error.message }, 0, duration);
+
+                logNetwork({
+                    method: 'POST',
+                    url: '/api',
+                    operation,
+                    status: 0,
+                    duration,
+                    error: error.message
+                });
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function setLoading(loading) {
+            isLoading = loading;
+            runBtn.disabled = loading;
+            runText.textContent = loading ? '⏳ Loading...' : '▶ Execute';
+        }
+
+        function displayResponse(data, status, duration) {
+            responseStatus.style.display = 'block';
+
+            const statusClass = status >= 200 && status < 300 ? 'success' : 'error';
+            statusCode.textContent = status ? `${status} ${getStatusText(status)}` : 'Network Error';
+            statusCode.style.color = statusClass === 'success' ? '#4ade80' : '#f87171';
+            statusTime.textContent = `${duration}ms`;
+
+            responseViewer.textContent = JSON.stringify(data, null, 2);
+            responseViewer.style.color = statusClass === 'success' ? '#a5d6ff' : '#f87171';
+        }
+
+        function getStatusText(status) {
+            const texts = {
+                200: 'OK',
+                400: 'Bad Request',
+                404: 'Not Found',
+                501: 'Not Implemented',
+                500: 'Internal Server Error'
+            };
+            return texts[status] || '';
+        }
+
+        function wrapAttributes(obj) {
+            const wrapped = {};
+            for (const key in obj) {
+                const val = obj[key];
+                if (typeof val === 'string') wrapped[key] = { S: val };
+                else if (typeof val === 'number') wrapped[key] = { N: val.toString() };
+                else if (typeof val === 'boolean') wrapped[key] = { BOOL: val };
+                else if (val === null) wrapped[key] = { NULL: true };
+                else if (Array.isArray(val)) {
+                    wrapped[key] = {
+                        L: val.map(v => {
+                            if (typeof v === 'object' && v !== null) return { M: wrapAttributes(v) };
+                            return wrapAttributes({ v }).v;
+                        })
+                    };
+                }
+                else if (typeof val === 'object') wrapped[key] = { M: wrapAttributes(val) };
+            }
+            return wrapped;
+        }
+
+        function addToHistory(entry) {
+            history.unshift(entry);
+            if (history.length > 50) history.pop(); // Keep last 50
+            renderHistory();
+        }
+
+        function renderHistory() {
+            if (history.length === 0) {
+                historyList.innerHTML = '<li style="padding: 20px; text-align: center; color: #666;">No history yet</li>';
+                return;
+            }
+
+            historyList.innerHTML = history.map((entry, idx) => `
+                <li class="history-item" onclick="loadFromHistory(${idx})">
+                    <div class="history-op">${entry.operation}</div>
+                    <div class="history-key">PK: ${entry.pk} | SK: ${entry.sk}</div>
+                    <div style="font-size: 0.75rem; color: #555; margin-top: 4px;">
+                        ${new Date(entry.timestamp).toLocaleTimeString()} 
+                        <span style="color: ${entry.status >= 200 && entry.status < 300 ? '#4ade80' : '#f87171'}">
+                            ${entry.status}
+                        </span>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        function loadFromHistory(idx) {
+            const entry = history[idx];
+            operationSelect.value = entry.operation;
+            pkInput.value = entry.pk;
+            skInput.value = entry.sk;
+
+            // Switch to request tab
+            document.querySelector('.ide-panel.left .ide-tab[data-tab="request"]').click();
+        }
+
+        function logNetwork(entry) {
+            networkLog.unshift(entry);
+            if (networkLog.length > 100) networkLog.pop();
+            renderNetwork();
+        }
+
+        function renderNetwork() {
+            if (networkLog.length === 0) {
+                networkList.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">No network activity yet</div>';
+                return;
+            }
+
+            networkList.innerHTML = networkLog.map((entry, idx) => `
+                <div class="network-entry" onclick="toggleNetworkDetails(${idx})">
+                    <div class="network-meta">
+                        <span class="network-method">${entry.method}</span>
+                        <span style="color: ${entry.status >= 200 && entry.status < 300 ? '#4ade80' : '#f87171'}">
+                            ${entry.status || 'ERR'}
+                        </span>
+                        <span style="color: #666;">${entry.duration}ms</span>
+                    </div>
+                    <div class="network-url">${entry.operation} → ${entry.url}</div>
+                    <div class="network-details" id="network-details-${idx}">
+                        <div style="margin-bottom: 10px;">
+                            <strong style="color: #888;">Request:</strong>
+                            <pre style="margin-top: 5px; font-size: 0.8rem; color: #aaa;">${JSON.stringify(entry.request || {}, null, 2)}</pre>
+                        </div>
+                        <div>
+                            <strong style="color: #888;">Response:</strong>
+                            <pre style="margin-top: 5px; font-size: 0.8rem; color: #aaa;">${JSON.stringify(entry.response || entry.error || {}, null, 2)}</pre>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleNetworkDetails(idx) {
+            const entry = document.querySelector(`#network-details-${idx}`);
+            const parent = entry.closest('.network-entry');
+            parent.classList.toggle('open');
+        }
+    </script>
+</body>
+
+</html>

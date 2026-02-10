@@ -4,9 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>shvm-db - The Anti-Magic Database</title>
     <meta name="description"
-        content="A DynamoDB-compatible database built on Cloudflare Durable Objects. No magic. Just physics.">
+        content="shvm-db - A DynamoDB-compatible database built on Cloudflare Durable Objects. No magic. Just physics. Learn about distributed systems through hands-on implementation.">
+    <meta name="keywords"
+        content="shvm-db, DynamoDB, Cloudflare, Durable Objects, distributed database, serverless, edge computing">
+    <title>shvm-db - The Anti-Magic Database</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,6 +24,7 @@
                 <a href="#vision">Philosophy</a>
                 <a href="#scaling">Scaling</a>
                 <a href="#dist-sys">Distributed Systems</a>
+                <a href="playground.html">Playground</a>
                 <a href="docs.html">Docs</a>
                 <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
             </div>
@@ -79,23 +82,42 @@ await client.send(new PutItemCommand({
 
                 <div class="diagram-container">
                     <div class="arch-flow">
+                        <!-- Step 1: Client -->
                         <div class="arch-step">
                             Client
                         </div>
                         <div class="arch-arrow"></div>
+
+                        <!-- Step 2: Router -->
                         <div class="arch-step">
-                            Worker Router
-                            <span class="detail">Hash(PK) &rarr; Range</span>
+                            Router
+                            <span class="detail">Hash(PK) &rarr; Workers</span>
                         </div>
                         <div class="arch-arrow"></div>
-                        <div class="arch-step highlight">
-                            Durable Object
-                            <span class="detail">Partition Owner</span>
-                        </div>
-                        <div class="arch-arrow"></div>
-                        <div class="arch-step">
-                            SQLite
-                            <span class="detail">WAL Mode</span>
+
+                        <!-- Step 3: Branching DOs -->
+                        <div class="arch-branch-container">
+                            <div class="arch-branch-lines"></div> <!-- Visual Bracket -->
+
+                            <!-- Branch A: Cold/Normal -->
+                            <div class="arch-branch-item">
+                                <div class="arch-step highlight">
+                                    DO (PK, A-M)
+                                    <span class="detail">Range Partition 1</span>
+                                </div>
+                                <div class="arch-arrow"></div>
+                                <div class="arch-step">SQLite</div>
+                            </div>
+
+                            <!-- Branch B: Hot Split -->
+                            <div class="arch-branch-item">
+                                <div class="arch-step highlight">
+                                    DO (PK, M-Z)
+                                    <span class="detail">Range Partition 2</span>
+                                </div>
+                                <div class="arch-arrow"></div>
+                                <div class="arch-step">SQLite</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -129,7 +151,8 @@ await client.send(new PutItemCommand({
                         <h3>Concurrency Control</h3>
                         <p>Every write is serialized through a single Durable Object thread. We support
                             <strong>Conditional Writes</strong> (Optimistic Concurrency Control) using
-                            `ConditionExpression`. If the version mismatches, the request is rejected with `400`.</p>
+                            `ConditionExpression`. If the version mismatches, the request is rejected with `400`.
+                        </p>
 
                         <h3>Global Tables</h3>
                         <p>For multi-region active-active replication, we use <strong>Last Writer Wins</strong>

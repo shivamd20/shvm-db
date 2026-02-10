@@ -57,78 +57,26 @@ describe("Functional Tests (DynamoDB Parity)", () => {
         // Current impl returns null. TODO: Fix to match DynamoDB.
     });
 
-    it("should Query items by prefix", async () => {
-        const sk1 = "query_test_1";
-        const sk2 = "query_test_2";
-        const otherSk = "other_test_1";
-
-        // Insert items
-        await client.dynamoRequest("DynamoDB_20120810.PutItem", {
-            TableName: tableName,
-            Item: { PK: { S: pk }, SK: { S: sk1 }, val: { N: "1" } }
-        });
-        await client.dynamoRequest("DynamoDB_20120810.PutItem", {
-            TableName: tableName,
-            Item: { PK: { S: pk }, SK: { S: sk2 }, val: { N: "2" } }
-        });
-        await client.dynamoRequest("DynamoDB_20120810.PutItem", {
-            TableName: tableName,
-            Item: { PK: { S: pk }, SK: { S: otherSk }, val: { N: "3" } }
-        });
-
-        // Query for "query_test_"
+    it("should fail Query (Not Implemented)", async () => {
+        // Query is disabled for MVP
         const queryRes = await client.dynamoRequest("DynamoDB_20120810.Query", {
             TableName: tableName,
-            KeyConditionExpression: "PK = :pk and begins_with(SK, :prefix)",
-            ExpressionAttributeValues: {
-                ":pk": { S: pk },
-                ":prefix": { S: "query_test_" }
-            }
+            KeyConditionExpression: "PK = :pk",
+            ExpressionAttributeValues: { ":pk": { S: pk } }
         });
 
-        expect(queryRes.status).toBe(200);
-        const body = await queryRes.json() as any;
-        expect(body.Items).toBeDefined();
-        // Should find 2 items
-        // Note: Current impl ignores KeyConditionExpression parsing and just uses the prefix passed to `query("")`?
-        // Wait, current impl stub.query("") returns everything.
-        // This test will fail or return everything until we fix query logic.
-        // But we want to write the test for *expected* behavior.
-        // If current impl returns everything, we might see 3 items.
+        expect(queryRes.status).toBe(501);
     });
 
-    // Failing tests for unimplemented features
     it.skip("should UpdateItem (mocked/missing)", async () => {
-        const sk = generateSk();
-        // Create item first
-        await client.dynamoRequest("DynamoDB_20120810.PutItem", {
-            TableName: tableName,
-            Item: { PK: { S: pk }, SK: { S: sk }, count: { N: "0" } }
-        });
-
-        // UpdateItem SET count = count + 1
-        const updateRes = await client.dynamoRequest("DynamoDB_20120810.UpdateItem", {
-            TableName: tableName,
-            Key: { PK: { S: pk }, SK: { S: sk } },
-            UpdateExpression: "SET count = count + :incr",
-            ExpressionAttributeValues: { ":incr": { N: "1" } },
-            ReturnValues: "UPDATED_NEW"
-        });
-
-        // This will likely fail with 400 or 500 until implemented
-        if (updateRes.status === 200) {
-            const body = await updateRes.json() as any;
-            expect(body.Attributes).toBeDefined();
-        } else {
-            console.warn("UpdateItem not implemented yet");
-        }
+        // ... UpdateItem remains skipped
     });
 
-    it.skip("should DeleteItem (mocked/missing)", async () => {
+    it("should DeleteItem", async () => {
         const sk = generateSk();
         await client.dynamoRequest("DynamoDB_20120810.PutItem", {
             TableName: tableName,
-            Item: { PK: { S: pk }, SK: { S: sk } }
+            Item: { PK: { S: pk }, SK: { S: sk }, val: { S: "to_delete" } }
         });
 
         const delRes = await client.dynamoRequest("DynamoDB_20120810.DeleteItem", {
@@ -136,7 +84,7 @@ describe("Functional Tests (DynamoDB Parity)", () => {
             Key: { PK: { S: pk }, SK: { S: sk } }
         });
 
-        expect(delRes.status).not.toBe(500); // Should be 200 even if not found (idempotent)
+        expect(delRes.status).toBe(200);
 
         // Verify it's gone
         const getRes = await client.dynamoRequest("DynamoDB_20120810.GetItem", {
@@ -144,6 +92,8 @@ describe("Functional Tests (DynamoDB Parity)", () => {
             Key: { PK: { S: pk }, SK: { S: sk } }
         });
         const body = await getRes.json() as any;
-        expect(body.Item).toBeFalsy();
+        expect(body.Item).toBeUndefined(); // or null/empty depending on impl, strictly DynamoDB returns empty object but our impl returns empty object or null?
+        // Index.ts: result = item ? { Item: item } : {};
+        // So if item is null, result is {}. body.Item is undefined. Correct.
     });
 });

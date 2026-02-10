@@ -1,11 +1,13 @@
 import { DurableObject } from "cloudflare:workers";
-import { MyDurableObject } from "./durable-object";
+import { PartitionDO } from "./partition-do";
+import { SubDO } from "./sub-do";
 
-export { MyDurableObject };
+export { PartitionDO, SubDO };
 
 // Environment bindings
 export interface Env {
-	MY_DURABLE_OBJECT: DurableObjectNamespace<MyDurableObject>;
+	PARTITION_DO: DurableObjectNamespace<PartitionDO>;
+	SUB_DO: DurableObjectNamespace<SubDO>;
 }
 
 export default {
@@ -19,7 +21,7 @@ export default {
 			} catch (err: any) {
 				return new Response(JSON.stringify({ __type: "InternalServerError", message: err.message }), {
 					status: 500,
-					headers: { "Content-Type": "application/x-amts-json-1.0" }
+					headers: { "Content-Type": "application/x-amz-json-1.0" }
 				});
 			}
 		}
@@ -39,26 +41,13 @@ async function handleDynamoRequest(request: Request, env: Env): Promise<Response
 	const strings = target.split(".");
 	const operation = strings[strings.length - 1];
 
-	// Extract TableName and Key to determine partition
-	// In strict DynamoDB, TableName is the table.
-	// For shvm-db MVP, we map TableName + PartitionKey to the Durable Object?
-	// The README says: "One partition == one Durable Object".
-	// "partition_id = hash(PK)"
-	// We need to find the PK from the body.
-
 	let pk: string | undefined;
 
 	// Helper to extract PK from Item or Key
 	const getPk = (item: any) => {
-		// Assumption: PK is the first key or explicitly named "PK" (as per README data model)
-		// README: "PK": "...", "SK": "..."
-		// But DynamoDB uses AttributeDefinitions.
-		// For MVP, let's enforce "PK" as the partition key name for simplicity, 
-		// or attempt to detect `PK` or `id`.
 		if (item?.PK?.S) return item.PK.S;
 		if (item?.pk?.S) return item.pk.S;
 		if (item?.id?.S) return item.id.S;
-		// Fallback: use the first key that looks like a string
 		return "default";
 	};
 
@@ -66,54 +55,43 @@ async function handleDynamoRequest(request: Request, env: Env): Promise<Response
 		pk = getPk(body.Item);
 	} else if (operation === "GetItem" || operation === "DeleteItem" || operation === "UpdateItem") {
 		pk = getPk(body.Key);
-	} else if (operation === "Query") {
-		// Query usually specifies KeyConditionExpression or Key
-		// We might need to parse ExpressionAttributeValues to find PK.
-		// MVP: Require "PK = :pk" and look in ExpressionAttributeValues
-		if (body.ExpressionAttributeValues) {
-			for (const key in body.ExpressionAttributeValues) {
-				if (body.ExpressionAttributeValues[key].S) {
-					// Heuristic: first string value is likely PK if strict schema isn't known
-					// Ideally we parse the condition.
-					// Let's just look for a value named :pk or :v1
-					if (key === ":pk" || key === ":id") pk = body.ExpressionAttributeValues[key].S;
-				}
-			}
-		}
 	}
 
 	if (!pk) {
 		pk = "default"; // Fallback
 	}
 
-	const id = env.MY_DURABLE_OBJECT.idFromName(pk);
-	const stub = env.MY_DURABLE_OBJECT.get(id);
+	// MVP: Routing to PartitionDO based on PK
+	const id = env.PARTITION_DO.idFromName(pk);
+	const stub = env.PARTITION_DO.get(id);
 
 	let result: any;
 
 	switch (operation) {
 		case "PutItem":
 			// body.Item is { PK: { S: "..." }, ... }
-			// We store generic JSON in SQLite.
-			// Extract SK if present
-			let sk = body.Item.SK?.S || body.Item.sk?.S || "default";
-			await stub.putItem(sk, body.Item);
-			result = {}; // DynamoDB PutItem returns empty unless ReturnValues is set
+			let skCheck = body.Item.SK?.S || body.Item.sk?.S;
+			if (!skCheck) throw new Error("Missing SK in Item - Required for Partitioning");
+			await stub.putItem(skCheck, body.Item);
+			result = {};
 			break;
 
 		case "GetItem":
-			let getSk = body.Key.SK?.S || body.Key.sk?.S || "default";
+			let getSk = body.Key.SK?.S || body.Key.sk?.S;
+			if (!getSk) throw new Error("Missing SK in Key - Required for Partitioning");
 			const item = await stub.getItem(getSk);
 			result = item ? { Item: item } : {};
 			break;
 
-		case "Query":
-			// MVP: Supports basic prefix query on SK?
-			// DO query method expects prefix
-			// Let's just return all for now or empty
-			const items = (await stub.query("")) as unknown[];
-			result = { Items: items, Count: items.length };
+		case "DeleteItem":
+			let delSk = body.Key.SK?.S || body.Key.sk?.S;
+			if (!delSk) throw new Error("Missing SK in Key - Required for Partitioning");
+			await stub.deleteItem(delSk);
+			result = {};
 			break;
+
+		case "Query":
+			return new Response(`Operation ${operation} not implemented`, { status: 501 });
 
 		default:
 			return new Response(`Operation ${operation} not implemented`, { status: 400 });

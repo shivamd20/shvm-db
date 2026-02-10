@@ -10,9 +10,9 @@
 	"migrations": [
 		{
 			"new_sqlite_classes": [
-				"MyDurableObject"
+				"SubDO"
 			],
-			"tag": "v1"
+			"tag": "v2"
 		}
 	],
 	"assets": {
@@ -22,8 +22,12 @@
 	"durable_objects": {
 		"bindings": [
 			{
-				"name": "MY_DURABLE_OBJECT",
-				"class_name": "MyDurableObject"
+				"name": "PARTITION_DO",
+				"class_name": "PartitionDO"
+			},
+			{
+				"name": "SUB_DO",
+				"class_name": "SubDO"
 			}
 		]
 	},

@@ -4,8 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Complete documentation for shvm-db - A DynamoDB-compatible database built on Cloudflare Durable Objects. Learn about partitioning, consistency, and API usage.">
+    <meta name="keywords" content="shvm-db, DynamoDB, Cloudflare, Durable Objects, distributed database, documentation">
     <title>Documentation - shvm-db</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&family=Fira+Code&display=swap"
         rel="stylesheet">
 </head>
@@ -17,7 +22,9 @@
             <div class="links">
                 <a href="/#vision">Philosophy</a>
                 <a href="/#scaling">Scaling</a>
-                <a href="docs.html" style="color: #fff;">Docs</a>
+                <a href="/#dist-sys">Distributed Systems</a>
+                <a href="/playground.html">Playground</a>
+                <a href="/docs.html">Docs</a>
                 <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
             </div>
         </header>
@@ -33,6 +40,8 @@
                 <h3>Architecture</h3>
                 <ul>
                     <li><a href="#partitioning">Partitioning</a></li>
+                    <li><a href="#comparison">Comparison vs DynamoDB</a></li>
+                    <li><a href="#mvp-limitations">MVP Limitations</a></li>
                     <li><a href="#concurrency">Concurrency</a></li>
                     <li><a href="#consistency">Consistency</a></li>
                 </ul>
@@ -76,21 +85,123 @@ curl -X POST https://shvm-db.workers.dev/api \
                     </ol>
                 </section>
 
+                <section id="examples">
+                    <h2>Code Examples</h2>
+                    <p>Here are some common patterns for working with shvm-db using the AWS SDK.</p>
+
+                    <h3>Using AWS SDK v3</h3>
+                    <pre><code class="language-javascript">import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { PutCommand, GetCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+
+const client = new DynamoDBClient({
+  endpoint: "https://shvm-db.workers.dev/api",
+  region: "auto",
+  credentials: { accessKeyId: "dummy", secretAccessKey: "dummy" }
+});
+
+// Put an item
+await client.send(new PutCommand({
+  TableName: "Users",
+  Item: {
+    PK: "user_123",
+    SK: "profile",
+    name: "Alice",
+    role: "engineer"
+  }
+}));
+
+// Get an item
+const result = await client.send(new GetCommand({
+  TableName: "Users",
+  Key: { PK: "user_123", SK: "profile" }
+}));
+console.log(result.Item);</code></pre>
+                </section>
+
                 <section id="partitioning">
                     <h2>Partitioning Strategy</h2>
-                    <p>Our partitioning model is designed to handle extreme scale by dynamically adjusting the range of
-                        keys served by each Durable Object.</p>
+                    <p>
+                        Unlike traditional databases that hide partitioning, shvm-db makes it explicit.
+                        The architecture separates <strong>Orchestration</strong> from <strong>Storage</strong>.
+                    </p>
 
-                    <h3>Recursive Splitting</h3>
-                    <p>Every partition starts covering the entire Sort Key range `(-inf, +inf)` for a given Partition
-                        Key. As write traffic increases beyond a threshold (e.g., 1000 WCU), the partition splits into
-                        two child partitions:</p>
+                    <h3>The PartitionDO (Router)</h3>
+                    <p>
+                        Every partition is managed by a <code>PartitionDO</code>. This actor acts as the authoritative
+                        leader for the partition's metadata and routing.
+                        It receives requests based on the Partition Key (PK).
+                    </p>
+
+                    <h3>The SubDO (Storage)</h3>
+                    <p>
+                        Data is effectively sharded further into <strong>SubDOs</strong> based on the Sort Key (SK).
+                        This "Static Sub-Partitioning" allows a single logical partition to scale beyond the throughput
+                        limits of a single Durable Object by distributing writes across multiple storage actors.
+                    </p>
+
+                    <pre><code class="language-bash">
+Request (PK="user_1") 
+    │
+    ▼
+PartitionDO (Leader for "user_1")
+    │
+    ├─► Hash(SK="meta") ──► SubDO-0
+    ├─► Hash(SK="logs") ──► SubDO-1
+    └─► ...
+                    </code></pre>
+                </section>
+
+                <section id="comparison">
+                    <h2>Comparison to DynamoDB</h2>
+                    <p>
+                        While inspired by DynamoDB's data model, shvm-db makes different trade-offs to prioritize
+                        explicit
+                        behavior and cost control.
+                    </p>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>shvm-db</th>
+                                <th>DynamoDB</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Partitioning</strong></td>
+                                <td>Explicit (visible DOs)</td>
+                                <td>Hidden (internal hashing)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Consistent Reads</strong></td>
+                                <td>Explicitly routed to Leader</td>
+                                <td>Optionally requested</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Rebalancing</strong></td>
+                                <td>Manual / Static (MVP)</td>
+                                <td>Automatic</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cost Model</strong></td>
+                                <td>Per Request / DO Time</td>
+                                <td>RCU / WCU or On-Demand</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="mvp-limitations">
+                    <h2>MVP Limitations</h2>
                     <ul>
-                        <li>Child A: `(-inf, split_key)`</li>
-                        <li>Child B: `(split_key, +inf)`</li>
+                        <li><strong>Single Table:</strong> Currently supports a single logical table.</li>
+                        <li><strong>No Query Support:</strong> <code>Query</code> operations are not yet implemented.
+                            Use
+                            <code>GetItem</code> for point lookups.
+                        </li>
+                        <li><strong>Static Sharding:</strong> Sub-partitions are statically hashed.</li>
                     </ul>
-                    <p>The splitting is transparent to the client. The Worker Router caches the partition map and
-                        directs requests to the correct child Durable Object.</p>
                 </section>
 
                 <section id="concurrency">
@@ -105,6 +216,20 @@ curl -X POST https://shvm-db.workers.dev/api \
                         atomic check-and-set semantics without explicit locking overhead.</p>
                 </section>
 
+                <section id="consistency">
+                    <h2>Consistency Model</h2>
+                    <p>shvm-db provides <strong>strong consistency</strong> for all operations within a partition.
+                        This is achieved through the single-threaded nature of Durable Objects.</p>
+
+                    <h3>Read-After-Write Consistency</h3>
+                    <p>All reads are guaranteed to see the most recent write to the same partition key.
+                        There is no eventual consistency window for reads within the same partition.</p>
+
+                    <h3>Cross-Partition Consistency</h3>
+                    <p>Operations across different partition keys are independent. If you need transactional
+                        guarantees across partitions, you'll need to implement application-level coordination.</p>
+                </section>
+
                 <footer>
                     <p>Need help? Check out the <a href="https://github.com/shivamd20/shvm-db"
                             style="color: var(--primary-color);">GitHub Repo</a>.</p>
@@ -112,6 +237,7 @@ curl -X POST https://shvm-db.workers.dev/api \
             </article>
         </main>
     </div>
+    <script src="script.js"></script>
 </body>
 
 </html>
