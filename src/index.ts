@@ -1,13 +1,20 @@
 import { DurableObject } from "cloudflare:workers";
 import { PartitionDO } from "./partition-do";
 import { SubDO } from "./sub-do";
+import { TableRegistryDO } from "./table-registry-do";
+import { validateItemAgainstSchema, validateKey, ValidationError } from "./validation";
+import { PARTITION_KEY_MAX_SIZE, SORT_KEY_MAX_SIZE } from "./constants";
+import { MetadataService } from "./metadata-service";
+import { CreateTableInput } from "./types";
 
-export { PartitionDO, SubDO };
+export { PartitionDO, SubDO, TableRegistryDO };
 
 // Environment bindings
 export interface Env {
 	PARTITION_DO: DurableObjectNamespace<PartitionDO>;
 	SUB_DO: DurableObjectNamespace<SubDO>;
+	TABLE_REGISTRY_DO: DurableObjectNamespace<TableRegistryDO>;
+	TABLE_METADATA_CACHE: KVNamespace;
 }
 
 export default {
@@ -19,8 +26,17 @@ export default {
 			try {
 				return await handleDynamoRequest(request, env);
 			} catch (err: any) {
-				return new Response(JSON.stringify({ __type: "InternalServerError", message: err.message }), {
-					status: 500,
+				console.error("Error handling request:", err);
+				if (err instanceof ValidationError) {
+					return new Response(JSON.stringify({ __type: "ValidationException", message: err.message }), {
+						status: 400,
+						headers: { "Content-Type": "application/x-amz-json-1.0" }
+					});
+				}
+				const type = err.message.includes("not found") ? "ResourceNotFoundException" : "InternalServerError";
+				const status = type === "ResourceNotFoundException" ? 400 : 500;
+				return new Response(JSON.stringify({ __type: type, message: err.message }), {
+					status: status,
 					headers: { "Content-Type": "application/x-amz-json-1.0" }
 				});
 			}
@@ -41,57 +57,135 @@ async function handleDynamoRequest(request: Request, env: Env): Promise<Response
 	const strings = target.split(".");
 	const operation = strings[strings.length - 1];
 
-	let pk: string | undefined;
+	const metadataService = new MetadataService(env);
 
-	// Helper to extract PK from Item or Key
-	const getPk = (item: any) => {
-		if (item?.PK?.S) return item.PK.S;
-		if (item?.pk?.S) return item.pk.S;
-		if (item?.id?.S) return item.id.S;
-		return "default";
+	// --- Control Plane ---
+	if (operation === "CreateTable") {
+		const input = body as CreateTableInput;
+		if (!input.TableName || !input.KeySchema || !input.AttributeDefinitions) {
+			throw new ValidationError("Missing required fields for CreateTable");
+		}
+		const result = await metadataService.createTable(input);
+		return new Response(JSON.stringify(result), {
+			headers: { "Content-Type": "application/x-amz-json-1.0" }
+		});
+	}
+
+	if (operation === "DeleteTable") {
+		const tableName = body.TableName;
+		if (!tableName) throw new ValidationError("Missing TableName");
+
+		const result = await metadataService.deleteTable(tableName);
+		return new Response(JSON.stringify(result), {
+			headers: { "Content-Type": "application/x-amz-json-1.0" }
+		});
+	}
+
+	if (operation === "ListTables") {
+		// Quick hack to expose list tables via registry
+		//Ideally this should be in MetadataService strictly
+		const registryId = env.TABLE_REGISTRY_DO.idFromName("global-registry");
+		const registry = env.TABLE_REGISTRY_DO.get(registryId);
+		const tables = await registry.listTables(body.Limit, body.ExclusiveStartTableName);
+		return new Response(JSON.stringify({ TableNames: tables }), {
+			headers: { "Content-Type": "application/x-amz-json-1.0" }
+		});
+	}
+
+	// --- Data Plane ---
+	const tableName = body.TableName;
+	if (!tableName) {
+		throw new ValidationError("TableName is required");
+	}
+
+	if (operation === "Query") {
+		return new Response(`Operation ${operation} not implemented`, { status: 501 });
+	}
+
+	// Fetch Metadata (Cache -> DO)
+	const metadata = await metadataService.getTableMetadata(tableName);
+
+	// Determine PK and SK definitions from Metadata
+	const pkDef = metadata.KeySchema.find(k => k.KeyType === "HASH");
+	if (!pkDef) throw new Error("Table definition missing Partition Key");
+
+	const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
+
+	// Helper to extract typed value (e.g. { S: "val" })
+	const getTypedValue = (source: any, attrName: string) => {
+		return source ? source[attrName] : undefined;
 	};
 
+	let pkTyped: any;
+	let skTyped: any;
+
 	if (operation === "PutItem") {
-		pk = getPk(body.Item);
+		pkTyped = getTypedValue(body.Item, pkDef.AttributeName);
+		if (skDef) skTyped = getTypedValue(body.Item, skDef.AttributeName);
 	} else if (operation === "GetItem" || operation === "DeleteItem" || operation === "UpdateItem") {
-		pk = getPk(body.Key);
+		pkTyped = getTypedValue(body.Key, pkDef.AttributeName);
+		if (skDef) skTyped = getTypedValue(body.Key, skDef.AttributeName);
 	}
 
-	if (!pk) {
-		pk = "default"; // Fallback
+	if (!pkTyped) throw new ValidationError(`Missing Partition Key: ${pkDef.AttributeName}`);
+	if (skDef && !skTyped) throw new ValidationError(`Missing Sort Key: ${skDef.AttributeName}`);
+
+	// Validate Schema locally before sending to DO
+	if (operation === "PutItem") {
+		validateItemAgainstSchema(body.Item, metadata);
 	}
 
-	// MVP: Routing to PartitionDO based on PK
-	const id = env.PARTITION_DO.idFromName(pk);
+	// Extract raw string value for partition hashing
+	const getRawStr = (val: any) => val.S || val.N || val.B;
+	const pkRaw = getRawStr(pkTyped);
+
+	if (!pkRaw) throw new ValidationError("Partition Key value invalid");
+
+	// Routing: Namespace by Table Name
+	// <TableName>#<PK>
+	const partitionKeyForDo = `${tableName}#${pkRaw}`;
+	const id = env.PARTITION_DO.idFromName(partitionKeyForDo);
 	const stub = env.PARTITION_DO.get(id);
 
 	let result: any;
 
 	switch (operation) {
 		case "PutItem":
-			// body.Item is { PK: { S: "..." }, ... }
-			let skCheck = body.Item.SK?.S || body.Item.sk?.S;
-			if (!skCheck) throw new Error("Missing SK in Item - Required for Partitioning");
-			await stub.putItem(skCheck, body.Item);
+			// We already validated body.Item against schema
+			// SK extraction for PartitionDO internal storage (still needs SK to manage sorting)
+			// Current PartitionDO expects "sk" string.
+
+			// We need to pass the "sort key value" to the PartitionDO, regardless of attribute name.
+			// If no SK defined in schema, maybe use 'default'? 
+			// But PartitionDO seems designed for SKs. 
+			// For now, let's assume we use the user's SK value or "default" if table is PK-only.
+			let skRaw = "default";
+			if (skDef && skTyped) {
+				skRaw = getRawStr(skTyped);
+			}
+
+			// NOTE: PartitionDO.putItem signature: (sk: string, value: unknown)
+			await stub.putItem(skRaw, body.Item);
 			result = {};
 			break;
 
 		case "GetItem":
-			let getSk = body.Key.SK?.S || body.Key.sk?.S;
-			if (!getSk) throw new Error("Missing SK in Key - Required for Partitioning");
-			const item = await stub.getItem(getSk);
+			let getSkRaw = "default";
+			if (skDef && skTyped) {
+				getSkRaw = getRawStr(skTyped);
+			}
+			const item = await stub.getItem(getSkRaw);
 			result = item ? { Item: item } : {};
 			break;
 
 		case "DeleteItem":
-			let delSk = body.Key.SK?.S || body.Key.sk?.S;
-			if (!delSk) throw new Error("Missing SK in Key - Required for Partitioning");
-			await stub.deleteItem(delSk);
+			let delSkRaw = "default";
+			if (skDef && skTyped) {
+				delSkRaw = getRawStr(skTyped);
+			}
+			await stub.deleteItem(delSkRaw);
 			result = {};
 			break;
-
-		case "Query":
-			return new Response(`Operation ${operation} not implemented`, { status: 501 });
 
 		default:
 			return new Response(`Operation ${operation} not implemented`, { status: 400 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 import { TestClient } from "./utils";
 
 describe("Functional Tests (DynamoDB Parity)", () => {
@@ -9,6 +9,29 @@ describe("Functional Tests (DynamoDB Parity)", () => {
 
     // Helper to generate unique SKs
     const generateSk = () => `${skPrefix}${Date.now()}_${Math.random()}`;
+
+    // Create table for functional tests
+    beforeAll(async () => {
+        try {
+            await client.dynamoRequest("DynamoDB_20120810.CreateTable", {
+                TableName: tableName,
+                KeySchema: [
+                    { AttributeName: "PK", KeyType: "HASH" },
+                    { AttributeName: "SK", KeyType: "RANGE" }
+                ],
+                AttributeDefinitions: [
+                    { AttributeName: "PK", AttributeType: "S" },
+                    { AttributeName: "SK", AttributeType: "S" }
+                ],
+                ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 }
+            });
+        } catch (e) {
+            // Ignore if already exists (though likely fresh env)
+        }
+    });
+
+
+
 
     it("should PutItem and GetItem correctly", async () => {
         const sk = generateSk();

@@ -13,6 +13,12 @@
 				"SubDO"
 			],
 			"tag": "v2"
+		},
+		{
+			"new_sqlite_classes": [
+				"TableRegistryDO"
+			],
+			"tag": "v3"
 		}
 	],
 	"assets": {
@@ -28,9 +34,19 @@
 			{
 				"name": "SUB_DO",
 				"class_name": "SubDO"
+			},
+			{
+				"name": "TABLE_REGISTRY_DO",
+				"class_name": "TableRegistryDO"
 			}
 		]
 	},
+	"kv_namespaces": [
+		{
+			"binding": "TABLE_METADATA_CACHE",
+			"id": "28f7d803ebaf49fb989333457e9cc451"
+		}
+	],
 	"observability": {
 		"enabled": true
 	},

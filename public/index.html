@@ -23,8 +23,11 @@
             <div class="links">
                 <a href="#vision">Philosophy</a>
                 <a href="#scaling">Scaling</a>
+                <a href="#scaling">Scaling</a>
                 <a href="#dist-sys">Distributed Systems</a>
+                <a href="#benchmark">Benchmarks</a>
                 <a href="playground.html">Playground</a>
+
                 <a href="docs.html">Docs</a>
                 <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
             </div>
@@ -140,6 +143,39 @@ await client.send(new PutItemCommand({
                     </div>
                 </div>
             </section>
+
+            <section id="benchmark" class="benchmark-section">
+                <div class="container">
+                    <h2>Performance Benchmarks</h2>
+                    <p class="subtitle">Real numbers. No fluff.</p>
+
+                    <div class="benchmark-grid">
+                        <div class="benchmark-card">
+                            <h3>Read Heavy (95% Read)</h3>
+                            <div class="stat">~156 <span class="unit">ops/sec</span></div>
+                            <p>Single Node Dev (Unoptimized)</p>
+                        </div>
+                        <div class="benchmark-card">
+                            <h3>Write Latency (p90)</h3>
+                            <div class="stat">~45 <span class="unit">ms</span></div>
+                            <p>Local Development</p>
+                        </div>
+                        <div class="benchmark-card">
+                            <h3>Read Latency (p90)</h3>
+                            <div class="stat">~38 <span class="unit">ms</span></div>
+                            <p>Local Development</p>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 30px; text-align: center;">
+                        <p>We believe in transparency. Run the benchmarks yourself.</p>
+                        <a href="https://github.com/shivamd20/shvm-db-benchmark" class="btn secondary" target="_blank">
+                            View Benchmark Repo &rarr;
+                        </a>
+                    </div>
+                </div>
+            </section>
+
 
             <section id="dist-sys" class="vision-section">
                 <div class="vision-grid">
