@@ -32,3 +32,9 @@ export interface CreateTableInput {
     AttributeDefinitions: AttributeDefinition[];
     ProvisionedThroughput?: ProvisionedThroughput;
 }
+
+export interface RoutingTable {
+    version: number;
+    partitions: number; // e.g. 100
+    // In a real system, we'd have a range map. For now, we assume implicit mod-N hashing.
+}

@@ -5,7 +5,7 @@ import { TableRegistryDO } from "./table-registry-do";
 import { validateItemAgainstSchema, validateKey, ValidationError } from "./validation";
 import { PARTITION_KEY_MAX_SIZE, SORT_KEY_MAX_SIZE } from "./constants";
 import { MetadataService } from "./metadata-service";
-import { CreateTableInput } from "./types";
+import { CreateTableInput, RoutingTable } from "./types";
 
 export { PartitionDO, SubDO, TableRegistryDO };
 
@@ -46,6 +46,19 @@ export default {
 		return new Response("Not Found", { status: 404 });
 	},
 } satisfies ExportedHandler<Env>;
+
+// Routing Cache: Map <PartitionKey, RoutingTable>
+const routingCache = new Map<string, RoutingTable>();
+
+// Internal Helper for Consistent Hashing
+function getPartitionId(key: string, partitions: number): number {
+	let hash = 0;
+	for (let i = 0; i < key.length; i++) {
+		hash = ((hash << 5) - hash) + key.charCodeAt(i);
+		hash |= 0; // Convert to 32bit integer
+	}
+	return Math.abs(hash) % partitions;
+}
 
 async function handleDynamoRequest(request: Request, env: Env): Promise<Response> {
 	const target = request.headers.get("x-amz-target");
@@ -144,56 +157,70 @@ async function handleDynamoRequest(request: Request, env: Env): Promise<Response
 	// Routing: Namespace by Table Name
 	// <TableName>#<PK>
 	const partitionKeyForDo = `${tableName}#${pkRaw}`;
-	const id = env.PARTITION_DO.idFromName(partitionKeyForDo);
-	const stub = env.PARTITION_DO.get(id);
 
-	let result: any;
+	let retries = 0;
+	const MAX_RETRIES = 1;
 
-	switch (operation) {
-		case "PutItem":
-			// We already validated body.Item against schema
-			// SK extraction for PartitionDO internal storage (still needs SK to manage sorting)
-			// Current PartitionDO expects "sk" string.
-
-			// We need to pass the "sort key value" to the PartitionDO, regardless of attribute name.
-			// If no SK defined in schema, maybe use 'default'? 
-			// But PartitionDO seems designed for SKs. 
-			// For now, let's assume we use the user's SK value or "default" if table is PK-only.
-			let skRaw = "default";
-			if (skDef && skTyped) {
-				skRaw = getRawStr(skTyped);
-			}
-
-			// NOTE: PartitionDO.putItem signature: (sk: string, value: unknown)
-			await stub.putItem(skRaw, body.Item);
-			result = {};
-			break;
-
-		case "GetItem":
-			let getSkRaw = "default";
-			if (skDef && skTyped) {
-				getSkRaw = getRawStr(skTyped);
-			}
-			const item = await stub.getItem(getSkRaw);
-			result = item ? { Item: item } : {};
-			break;
-
-		case "DeleteItem":
-			let delSkRaw = "default";
-			if (skDef && skTyped) {
-				delSkRaw = getRawStr(skTyped);
-			}
-			await stub.deleteItem(delSkRaw);
-			result = {};
-			break;
-
-		default:
-			return new Response(`Operation ${operation} not implemented`, { status: 400 });
-	}
-
-	return new Response(JSON.stringify(result), {
-		headers: {
-			"Content-Type": "application/x-amz-json-1.0"
+	while (true) {
+		// Check Routing Cache
+		let routing = routingCache.get(partitionKeyForDo);
+		if (!routing) {
+			// Fetch from PartitionDO (Control Plane)
+			const id = env.PARTITION_DO.idFromName(partitionKeyForDo);
+			const stub = env.PARTITION_DO.get(id);
+			routing = await stub.getRoutingConfig();
+			routingCache.set(partitionKeyForDo, routing);
 		}
-	});
+
+		// Apply Routing
+		let skRaw = "default";
+		if (skDef && skTyped) {
+			skRaw = getRawStr(skTyped);
+		}
+
+		const partitionId = getPartitionId(skRaw, routing.partitions);
+		const subDoId = env.SUB_DO.idFromName(`sub-partition-${partitionId}`);
+		const subStub = env.SUB_DO.get(subDoId);
+
+		let result: any;
+
+		try {
+			switch (operation) {
+				case "PutItem":
+					await subStub.putItem(skRaw, body.Item, partitionId, routing.partitions);
+					result = {};
+					break;
+
+				case "GetItem":
+					const item = await subStub.getItem(skRaw, partitionId, routing.partitions);
+					result = item ? { Item: item } : {};
+					break;
+
+				case "DeleteItem":
+					await subStub.deleteItem(skRaw, partitionId, routing.partitions);
+					result = {};
+					break;
+
+				default:
+					return new Response(`Operation ${operation} not implemented`, { status: 400 });
+			}
+
+			// Success
+			return new Response(JSON.stringify(result), {
+				headers: {
+					"Content-Type": "application/x-amz-json-1.0"
+				}
+			});
+
+		} catch (err: any) {
+			// Check for routing errors / redirects
+			if ((err.message.includes("Wrong PartitionDO") || err.message.includes("Misrouted request")) && retries < MAX_RETRIES) {
+				console.warn(`Routing mismatch for ${partitionKeyForDo}, refreshing and retrying...`);
+				routingCache.delete(partitionKeyForDo);
+				retries++;
+				continue;
+			}
+			throw err;
+		}
+	}
 }

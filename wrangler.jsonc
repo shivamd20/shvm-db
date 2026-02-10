@@ -25,6 +25,12 @@
 				"TableRegistryDO"
 			],
 			"tag": "v3"
+		},
+		{
+			"deleted_classes": [
+				"MyDurableObject"
+			],
+			"tag": "v4"
 		}
 	],
 	"assets": {

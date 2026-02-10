@@ -21,8 +21,12 @@ export class SubDO extends DurableObject {
         this.bf = new BloomFilter(BLOOM_FILTER_SIZE); // 128KB
 
 
-        // Initialize Schema - Simple Key-Value for now
+        // Initialize Schema - Simple Key-Value and Metadata
         this.sql.exec(`
+            CREATE TABLE IF NOT EXISTS metadata (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            );
             CREATE TABLE IF NOT EXISTS items (
                 sk TEXT PRIMARY KEY,
                 value BLOB
@@ -41,7 +45,37 @@ export class SubDO extends DurableObject {
         }
     }
 
-    async putItem(sk: string, value: unknown): Promise<void> {
+    private validateRouting(sk: string, partitionId: number, totalPartitions: number) {
+        // 1. Verify Sort Key belongs to Partition
+        let hash = 0;
+        for (let i = 0; i < sk.length; i++) {
+            hash = ((hash << 5) - hash) + sk.charCodeAt(i);
+            hash |= 0;
+        }
+        const calculatedPartition = Math.abs(hash) % totalPartitions;
+
+        if (calculatedPartition !== partitionId) {
+            throw new Error(`Misrouted request: Key ${sk} belongs to partition ${calculatedPartition}, but request targets ${partitionId}`);
+        }
+
+        // 2. Verify THIS DO is authoritative for partitionId
+        // Check persistent storage for ownership
+        const stored = Array.from(this.sql.exec("SELECT value FROM metadata WHERE key = ?", "partition_id"));
+        let storedId = -1;
+        if (stored.length > 0) {
+            storedId = parseInt(stored[0].value as string);
+        }
+
+        if (storedId === -1) {
+            // Trust On First Use (TOFU)
+            this.sql.exec("INSERT INTO metadata (key, value) VALUES (?, ?)", "partition_id", partitionId.toString());
+        } else if (storedId !== partitionId) {
+            throw new Error(`Wrong PartitionDO: I own partition ${storedId}, but you requested ${partitionId}. Redirect needed.`);
+        }
+    }
+
+    async putItem(sk: string, value: unknown, partitionId: number, totalPartitions: number): Promise<void> {
+        this.validateRouting(sk, partitionId, totalPartitions);
         this.sql.exec(`
             INSERT OR REPLACE INTO items (sk, value) VALUES (?, ?)
         `, sk, JSON.stringify(value));
@@ -50,7 +84,8 @@ export class SubDO extends DurableObject {
         this.bf.add(sk);
     }
 
-    async getItem(sk: string): Promise<unknown | null> {
+    async getItem(sk: string, partitionId: number, totalPartitions: number): Promise<unknown | null> {
+        this.validateRouting(sk, partitionId, totalPartitions);
         // Check cache first
         const cached = this.lru.get(sk);
         if (cached !== undefined) return cached;
@@ -70,7 +105,8 @@ export class SubDO extends DurableObject {
         return value;
     }
 
-    async deleteItem(sk: string): Promise<void> {
+    async deleteItem(sk: string, partitionId: number, totalPartitions: number): Promise<void> {
+        this.validateRouting(sk, partitionId, totalPartitions);
         this.lru.remove(sk);
         // Note: Bloom Filter doesn't support deletion without rebuilding or Counting BF
         this.sql.exec(`
