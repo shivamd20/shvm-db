@@ -973,6 +973,71 @@ textarea.form-control {
     border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: #444;
+
+/* Benchmark Styles */
+.benchmark-section {
+    background: linear-gradient(180deg, #050505 0%, #0a0a0a 100%);
+    border-top: 1px solid #1a1a1a;
+}
+
+.benchmark-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 32px;
+    margin-top: 60px;
+}
+
+.benchmark-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #222;
+    padding: 40px 30px;
+    border-radius: 16px;
+    transition: transform 0.2s, border-color 0.2s, background 0.2s;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.benchmark-card:hover {
+    transform: translateY(-5px);
+    border-color: #333;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.benchmark-card h3 {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #888;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.benchmark-card .stat {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, #fff 0%, #aaa 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.benchmark-card .unit {
+    font-size: 1rem;
+    color: #555;
+    font-weight: 500;
+    margin-left: 4px;
+    -webkit-text-fill-color: #555;
+    /* Override gradient for unit */
+}
+
+.benchmark-card p {
+    font-size: 0.95rem;
+    color: #666;
+    margin: 0;
 }
