@@ -1,32 +1,46 @@
+
 import { DurableObject } from "cloudflare:workers";
 import { PartitionDO } from "./partition-do";
 import { SubDO } from "./sub-do";
 import { TableRegistryDO } from "./table-registry-do";
-import { validateItemAgainstSchema, validateKey, ValidationError } from "./validation";
-import { PARTITION_KEY_MAX_SIZE, SORT_KEY_MAX_SIZE } from "./constants";
+import { validateItemAgainstSchema, ValidationError } from "./validation";
 import { MetadataService } from "./metadata-service";
-import { CreateTableInput, RoutingTable } from "./types";
+import { CreateTableInput, RoutingTable, ReplicationMessage, Role } from "./types";
+import { createLogger } from "./debug";
 
 export { PartitionDO, SubDO, TableRegistryDO };
 
-// Environment bindings
 export interface Env {
 	PARTITION_DO: DurableObjectNamespace<PartitionDO>;
 	SUB_DO: DurableObjectNamespace<SubDO>;
 	TABLE_REGISTRY_DO: DurableObjectNamespace<TableRegistryDO>;
 	TABLE_METADATA_CACHE: KVNamespace;
+	REPLICATION_QUEUE: Queue;
+	SHVM_DEBUG?: string;
 }
+
+// --- Hashing ---
+// djb2 hash: fast, simple, deterministic string -> number
+function hashPartitionKey(pk: string, numPartitions: number): number {
+	let hash = 5381;
+	for (let i = 0; i < pk.length; i++) {
+		hash = ((hash << 5) + hash + pk.charCodeAt(i)) >>> 0; // unsigned 32-bit
+	}
+	return hash % numPartitions;
+}
+
+const NUM_PARTITIONS = 100;
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const url = new URL(request.url);
-
 		// Handle API requests
 		if (url.pathname.startsWith("/api") || request.headers.has("x-amz-target")) {
 			try {
-				return await handleDynamoRequest(request, env);
+				return await handleDynamoRequest(request, env, ctx);
 			} catch (err: any) {
-				console.error("Error handling request:", err);
+				const log = createLogger(env);
+				log.error("router", `Error: ${err?.message}`, err?.stack);
 				if (err instanceof ValidationError) {
 					return new Response(JSON.stringify({ __type: "ValidationException", message: err.message }), {
 						status: 400,
@@ -34,193 +48,225 @@ export default {
 					});
 				}
 				const type = err.message.includes("not found") ? "ResourceNotFoundException" : "InternalServerError";
-				const status = type === "ResourceNotFoundException" ? 400 : 500;
 				return new Response(JSON.stringify({ __type: type, message: err.message }), {
-					status: status,
+					status: type === "ResourceNotFoundException" ? 400 : 500,
 					headers: { "Content-Type": "application/x-amz-json-1.0" }
 				});
 			}
 		}
-
-		// Fallback for assets
 		return new Response("Not Found", { status: 404 });
 	},
-} satisfies ExportedHandler<Env>;
 
-// Routing Cache: Map <PartitionKey, RoutingTable>
-const routingCache = new Map<string, RoutingTable>();
+	async queue(batch: MessageBatch<ReplicationMessage>, env: Env): Promise<void> {
+		const log = createLogger(env);
+		const promises: Promise<void>[] = [];
+		const routingCache = new Map<string, RoutingTable>();
 
-// Internal Helper for Consistent Hashing
-function getPartitionId(key: string, partitions: number): number {
-	let hash = 0;
-	for (let i = 0; i < key.length; i++) {
-		hash = ((hash << 5) - hash) + key.charCodeAt(i);
-		hash |= 0; // Convert to 32bit integer
-	}
-	return Math.abs(hash) % partitions;
-}
+		for (const message of batch.messages) {
+			const msg = message.body;
+			const pId = msg.partitionId;
+			const tableName = msg.tableName || "default";
+			const pKey = `${tableName}::partition-${pId}`;
 
-async function handleDynamoRequest(request: Request, env: Env): Promise<Response> {
+			log("queue", `replication type=${msg.type} table=${tableName} partition=${pId} sk=${msg.sk} v=${msg.version}`);
+
+			// Replicate to standby
+			const standbyId = env.SUB_DO.idFromName(`${pKey}-standby`);
+			const standbyStub = env.SUB_DO.get(standbyId);
+			promises.push(standbyStub.init(Role.STANDBY).then(() => standbyStub.applyMutation(msg)));
+
+			// Get routing config for replicas
+			let routing = routingCache.get(pKey);
+			if (!routing) {
+				const pStub = env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey));
+				routing = await pStub.getRoutingConfig();
+				routingCache.set(pKey, routing);
+			}
+
+			const replicas = routing.replicas[pId] || [];
+			log("queue", `partition ${pKey} replicas=${replicas.length}`);
+
+			for (const rId of replicas) {
+				const rStub = env.SUB_DO.get(env.SUB_DO.idFromString(rId));
+				promises.push(rStub.applyMutation(msg));
+			}
+		}
+
+		await Promise.allSettled(promises);
+	},
+
+} satisfies ExportedHandler<Env, ReplicationMessage>;
+
+// --- Routing ---
+const validRoutingCache = new Map<string, RoutingTable>();
+
+async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+	const log = createLogger(env);
+	const requestStartTs = Date.now();
 	const target = request.headers.get("x-amz-target");
-	if (!target) {
-		return new Response("Missing x-amz-target header", { status: 400 });
-	}
+	if (!target) return new Response("Missing x-amz-target header", { status: 400 });
 
 	const body = await request.json() as any;
-	const strings = target.split(".");
-	const operation = strings[strings.length - 1];
-
+	const op = target.split(".").pop();
 	const metadataService = new MetadataService(env);
 
-	// --- Control Plane ---
-	if (operation === "CreateTable") {
-		const input = body as CreateTableInput;
-		if (!input.TableName || !input.KeySchema || !input.AttributeDefinitions) {
-			throw new ValidationError("Missing required fields for CreateTable");
-		}
-		const result = await metadataService.createTable(input);
-		return new Response(JSON.stringify(result), {
-			headers: { "Content-Type": "application/x-amz-json-1.0" }
-		});
+	log("router", `op=${op} table=${body.TableName || 'N/A'}`);
+
+	// --- Debug headers builder ---
+	const debugHeaders: Record<string, string> = {
+		"Content-Type": "application/x-amz-json-1.0",
+		"X-SHIVAM-DB-OP": op || "unknown",
+		"X-SHIVAM-DB-REQUEST-TS": String(requestStartTs),
+	};
+
+	// ... Control Plane ...
+	if (op === "CreateTable") {
+		log("control", `CreateTable: ${body.TableName}`);
+		const res = await metadataService.createTable(body as CreateTableInput);
+		return new Response(JSON.stringify(res), { headers: debugHeaders });
 	}
-
-	if (operation === "DeleteTable") {
-		const tableName = body.TableName;
-		if (!tableName) throw new ValidationError("Missing TableName");
-
-		const result = await metadataService.deleteTable(tableName);
-		return new Response(JSON.stringify(result), {
-			headers: { "Content-Type": "application/x-amz-json-1.0" }
-		});
+	if (op === "DeleteTable") {
+		log("control", `DeleteTable: ${body.TableName}`);
+		const res = await metadataService.deleteTable(body.TableName);
+		return new Response(JSON.stringify(res), { headers: debugHeaders });
 	}
-
-	if (operation === "ListTables") {
-		// Quick hack to expose list tables via registry
-		//Ideally this should be in MetadataService strictly
-		const registryId = env.TABLE_REGISTRY_DO.idFromName("global-registry");
-		const registry = env.TABLE_REGISTRY_DO.get(registryId);
+	if (op === "ListTables") {
+		const registry = env.TABLE_REGISTRY_DO.get(env.TABLE_REGISTRY_DO.idFromName("global-registry"));
 		const tables = await registry.listTables(body.Limit, body.ExclusiveStartTableName);
-		return new Response(JSON.stringify({ TableNames: tables }), {
-			headers: { "Content-Type": "application/x-amz-json-1.0" }
+		return new Response(JSON.stringify({ TableNames: tables }), { headers: debugHeaders });
+	}
+	if (op === "DescribeTable") {
+		const metadata = await metadataService.getTableMetadata(body.TableName);
+		return new Response(JSON.stringify({ Table: metadata }), { headers: debugHeaders });
+	}
+
+	// --- Early check for unsupported operations ---
+	// Must happen before TableName validation because batch ops (BatchWriteItem, etc.)
+	// don't have a top-level TableName field.
+	const supportedDataOps = ["PutItem", "GetItem", "DeleteItem", "UpdateItem"];
+	if (!supportedDataOps.includes(op)) {
+		if (body.TableName) debugHeaders["X-SHIVAM-DB-TABLE"] = body.TableName;
+		return new Response(JSON.stringify({ __type: "NotImplemented", message: `Operation ${op} not implemented` }), {
+			status: 501,
+			headers: debugHeaders
 		});
 	}
 
-	// --- Data Plane ---
 	const tableName = body.TableName;
-	if (!tableName) {
-		throw new ValidationError("TableName is required");
-	}
+	if (!tableName) throw new ValidationError("TableName is required");
 
-	if (operation === "Query") {
-		return new Response(`Operation ${operation} not implemented`, { status: 501 });
-	}
-
-	// Fetch Metadata (Cache -> DO)
 	const metadata = await metadataService.getTableMetadata(tableName);
-
-	// Determine PK and SK definitions from Metadata
 	const pkDef = metadata.KeySchema.find(k => k.KeyType === "HASH");
 	if (!pkDef) throw new Error("Table definition missing Partition Key");
 
-	const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
-
-	// Helper to extract typed value (e.g. { S: "val" })
-	const getTypedValue = (source: any, attrName: string) => {
-		return source ? source[attrName] : undefined;
-	};
-
-	let pkTyped: any;
-	let skTyped: any;
-
-	if (operation === "PutItem") {
-		pkTyped = getTypedValue(body.Item, pkDef.AttributeName);
-		if (skDef) skTyped = getTypedValue(body.Item, skDef.AttributeName);
-	} else if (operation === "GetItem" || operation === "DeleteItem" || operation === "UpdateItem") {
-		pkTyped = getTypedValue(body.Key, pkDef.AttributeName);
-		if (skDef) skTyped = getTypedValue(body.Key, skDef.AttributeName);
-	}
-
-	if (!pkTyped) throw new ValidationError(`Missing Partition Key: ${pkDef.AttributeName}`);
-	if (skDef && !skTyped) throw new ValidationError(`Missing Sort Key: ${skDef.AttributeName}`);
-
-	// Validate Schema locally before sending to DO
-	if (operation === "PutItem") {
-		validateItemAgainstSchema(body.Item, metadata);
-	}
-
-	// Extract raw string value for partition hashing
-	const getRawStr = (val: any) => val.S || val.N || val.B;
-	const pkRaw = getRawStr(pkTyped);
+	const pkVal = (op === "PutItem" ? body.Item : body.Key)?.[pkDef.AttributeName];
+	const getRaw = (v: any) => v?.S || v?.N || v?.B;
+	const pkRaw = getRaw(pkVal);
 
 	if (!pkRaw) throw new ValidationError("Partition Key value invalid");
 
-	// Routing: Namespace by Table Name
-	// <TableName>#<PK>
-	const partitionKeyForDo = `${tableName}#${pkRaw}`;
+	// --- Partition Routing (table-scoped) ---
+	const partitionId = hashPartitionKey(pkRaw, NUM_PARTITIONS);
+	const pKey = `${tableName}::partition-${partitionId}`;
 
-	let retries = 0;
-	const MAX_RETRIES = 1;
+	debugHeaders["X-SHIVAM-DB-PARTITION-ID-INTERNAL"] = String(partitionId);
+	debugHeaders["X-SHIVAM-DB-PARTITION-KEY"] = pKey;
+	debugHeaders["X-SHIVAM-DB-TABLE"] = tableName;
 
-	while (true) {
-		// Check Routing Cache
-		let routing = routingCache.get(partitionKeyForDo);
-		if (!routing) {
-			// Fetch from PartitionDO (Control Plane)
-			const id = env.PARTITION_DO.idFromName(partitionKeyForDo);
-			const stub = env.PARTITION_DO.get(id);
-			routing = await stub.getRoutingConfig();
-			routingCache.set(partitionKeyForDo, routing);
-		}
+	log("router", `PK=${pkRaw} -> partitionId=${partitionId} pKey=${pKey}`);
 
-		// Apply Routing
-		let skRaw = "default";
-		if (skDef && skTyped) {
-			skRaw = getRawStr(skTyped);
-		}
+	if (op === "PutItem" || op === "DeleteItem" || op === "UpdateItem") {
+		const leaderStub = env.SUB_DO.get(env.SUB_DO.idFromName(`${pKey}-leader`));
+		await leaderStub.init(Role.LEADER);
 
-		const partitionId = getPartitionId(skRaw, routing.partitions);
-		const subDoId = env.SUB_DO.idFromName(`sub-partition-${partitionId}`);
-		const subStub = env.SUB_DO.get(subDoId);
+		if (op === "PutItem") {
+			validateItemAgainstSchema(body.Item, metadata);
+			const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
+			const skVal = skDef ? body.Item[skDef.AttributeName] : undefined;
+			const skRaw = getRaw(skVal) || "default";
+			debugHeaders["X-SHIVAM-DB-SK"] = skRaw;
+			debugHeaders["X-SHIVAM-DB-LEADER-DO"] = `${pKey}-leader`;
 
-		let result: any;
+			const doReachedTs = Date.now();
+			await leaderStub.putItem(skRaw, body.Item, partitionId, tableName);
+			debugHeaders["X-SHIVAM-DB-SUB-DO-REACHED-TS"] = String(doReachedTs);
+			debugHeaders["X-SHIVAM-DB-SUB-DO-LATENCY-MS"] = String(Date.now() - doReachedTs);
+		} else if (op === "DeleteItem") {
+			const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
+			const skVal = skDef ? body.Key[skDef.AttributeName] : undefined;
+			const skRaw = getRaw(skVal) || "default";
+			debugHeaders["X-SHIVAM-DB-SK"] = skRaw;
 
-		try {
-			switch (operation) {
-				case "PutItem":
-					await subStub.putItem(skRaw, body.Item, partitionId, routing.partitions);
-					result = {};
-					break;
-
-				case "GetItem":
-					const item = await subStub.getItem(skRaw, partitionId, routing.partitions);
-					result = item ? { Item: item } : {};
-					break;
-
-				case "DeleteItem":
-					await subStub.deleteItem(skRaw, partitionId, routing.partitions);
-					result = {};
-					break;
-
-				default:
-					return new Response(`Operation ${operation} not implemented`, { status: 400 });
-			}
-
-			// Success
-			return new Response(JSON.stringify(result), {
-				headers: {
-					"Content-Type": "application/x-amz-json-1.0"
-				}
+			const doReachedTs = Date.now();
+			await leaderStub.deleteItem(skRaw, partitionId, tableName);
+			debugHeaders["X-SHIVAM-DB-SUB-DO-REACHED-TS"] = String(doReachedTs);
+			debugHeaders["X-SHIVAM-DB-SUB-DO-LATENCY-MS"] = String(Date.now() - doReachedTs);
+		} else {
+			// UpdateItem - not implemented
+			return new Response(JSON.stringify({ __type: "NotImplemented", message: "UpdateItem not supported yet" }), {
+				status: 501,
+				headers: debugHeaders
 			});
-
-		} catch (err: any) {
-			// Check for routing errors / redirects
-			if ((err.message.includes("Wrong PartitionDO") || err.message.includes("Misrouted request")) && retries < MAX_RETRIES) {
-				console.warn(`Routing mismatch for ${partitionKeyForDo}, refreshing and retrying...`);
-				routingCache.delete(partitionKeyForDo);
-				retries++;
-				continue;
-			}
-			throw err;
 		}
+		return new Response(JSON.stringify({}), { headers: debugHeaders });
 	}
+
+	if (op === "GetItem") {
+		if (!validRoutingCache.has(pKey)) {
+			const pStub = env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey));
+			const r = await pStub.getRoutingConfig();
+			validRoutingCache.set(pKey, r);
+		}
+		const routing = validRoutingCache.get(pKey)!;
+
+		const replicas = routing.replicas[partitionId] || [];
+		let readTarget: string;
+
+		let rStub: DurableObjectStub;
+		if (replicas.length === 0) {
+			// No read replicas provisioned — read from the Leader directly.
+			// The Leader always has the latest data (writes locally before publishing to queue).
+			// The Standby only gets data asynchronously via the replication queue.
+			const leaderId = `${pKey}-leader`;
+			rStub = env.SUB_DO.get(env.SUB_DO.idFromName(leaderId));
+			await rStub.init(Role.LEADER);
+			readTarget = leaderId;
+			log("router", `GetItem: no replicas, reading from leader ${leaderId}`);
+		} else {
+			const rId = replicas[Math.floor(Math.random() * replicas.length)];
+			rStub = env.SUB_DO.get(env.SUB_DO.idFromString(rId));
+			readTarget = rId;
+			log("router", `GetItem: reading from replica ${rId}`);
+		}
+
+		const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
+		const skVal = skDef ? body.Key[skDef.AttributeName] : undefined;
+		const skRaw = getRaw(skVal) || "default";
+
+		debugHeaders["X-SHIVAM-DB-SK"] = skRaw;
+		debugHeaders["X-SHIVAM-DB-READ-TARGET"] = readTarget;
+
+		const doReachedTs = Date.now();
+		const item = await rStub.getItem(skRaw);
+		debugHeaders["X-SHIVAM-DB-SUB-DO-REACHED-TS"] = String(doReachedTs);
+		debugHeaders["X-SHIVAM-DB-SUB-DO-LATENCY-MS"] = String(Date.now() - doReachedTs);
+
+		// --- Autoscaling Hook (best-effort, non-critical) ---
+		ctx.waitUntil((async () => {
+			try {
+				const pStub = env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey));
+				await pStub.reportLoad(1);
+			} catch (e) {
+				log.warn("router", "autoscale hook failed (non-critical)", e);
+			}
+		})());
+
+		return new Response(JSON.stringify(item ? { Item: item } : {}), { headers: debugHeaders });
+	}
+
+	// Unsupported operations => 501
+	return new Response(JSON.stringify({ __type: "NotImplemented", message: `Operation ${op} not implemented` }), {
+		status: 501,
+		headers: debugHeaders
+	});
 }

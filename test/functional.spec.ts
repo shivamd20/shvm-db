@@ -48,16 +48,22 @@ describe("Functional Tests (DynamoDB Parity)", () => {
         });
         expect(putRes.status).toBe(200);
 
-        // GetItem
-        const getRes = await client.dynamoRequest("DynamoDB_20120810.GetItem", {
-            TableName: tableName,
-            Key: {
-                PK: { S: pk },
-                SK: { S: sk }
-            }
-        });
-        expect(getRes.status).toBe(200);
-        const body = await getRes.json() as any;
+        // GetItem with polling (Eventual Consistency)
+        let body: any;
+        for (let i = 0; i < 20; i++) {
+            const getRes = await client.dynamoRequest("DynamoDB_20120810.GetItem", {
+                TableName: tableName,
+                Key: {
+                    PK: { S: pk },
+                    SK: { S: sk }
+                }
+            });
+            expect(getRes.status).toBe(200);
+            body = await getRes.json() as any;
+            if (body.Item) break;
+            await new Promise(r => setTimeout(r, 100));
+        }
+
         expect(body.Item).toEqual(item);
     });
 

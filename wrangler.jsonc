@@ -9,28 +9,12 @@
 	"compatibility_date": "2025-11-28",
 	"migrations": [
 		{
-			"new_classes": [
-				"PartitionDO"
-			],
-			"tag": "v1"
-		},
-		{
 			"new_sqlite_classes": [
-				"SubDO"
-			],
-			"tag": "v2"
-		},
-		{
-			"new_sqlite_classes": [
+				"PartitionDO",
+				"SubDO",
 				"TableRegistryDO"
 			],
-			"tag": "v3"
-		},
-		{
-			"deleted_classes": [
-				"MyDurableObject"
-			],
-			"tag": "v4"
+			"tag": "v1"
 		}
 	],
 	"assets": {
@@ -53,18 +37,43 @@
 			}
 		]
 	},
+	"queues": {
+		"producers": [
+			{
+				"binding": "REPLICATION_QUEUE",
+				"queue": "shvm-db-replication-queue"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "shvm-db-replication-queue",
+				"max_batch_size": 5,
+				"max_batch_timeout": 1
+			}
+		]
+	},
 	"kv_namespaces": [
 		{
 			"binding": "TABLE_METADATA_CACHE",
 			"id": "28f7d803ebaf49fb989333457e9cc451"
 		}
 	],
+	"vars": {
+		"SHVM_DEBUG": "false"
+	},
 	"observability": {
 		"enabled": true
 	},
 	"compatibility_flags": [
 		"nodejs_compat"
-	]
+	],
+	"env": {
+		"production": {
+			"vars": {
+				"SHVM_DEBUG": "false"
+			}
+		}
+	}
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

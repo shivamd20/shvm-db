@@ -72,9 +72,15 @@ describe("Table Modeling Integration", () => {
             }
         };
 
-        const getRes = await client.dynamoRequest("DynamoDB_20120810.GetItem", key);
-        expect(getRes.status).toBe(200);
-        const body = await getRes.json() as any;
+        let body: any;
+        for (let i = 0; i < 20; i++) {
+            const getRes = await client.dynamoRequest("DynamoDB_20120810.GetItem", key);
+            expect(getRes.status).toBe(200);
+            body = await getRes.json() as any;
+            if (body.Item) break;
+            await new Promise(r => setTimeout(r, 100));
+        }
+
         expect(body.Item).toBeDefined();
         expect(body.Item.Data.S).toBe("some data");
     });

@@ -1,14 +1,16 @@
 import { TableMetadata } from "./types";
 import { TableRegistryDO } from "./table-registry-do";
 import { Env } from "./index";
+import { createLogger } from "./debug";
 
 export class MetadataService {
     private env: Env;
     private registry: DurableObjectStub<TableRegistryDO>;
+    private log;
 
     constructor(env: Env) {
         this.env = env;
-        // Global singleton registry
+        this.log = createLogger(env);
         const id = env.TABLE_REGISTRY_DO.idFromName("global-registry");
         this.registry = env.TABLE_REGISTRY_DO.get(id);
     }
@@ -27,7 +29,7 @@ export class MetadataService {
                 return cached;
             }
         } catch (e) {
-            console.warn("KV Cache lookup failed", e);
+            this.log.warn("MetadataService", "KV cache lookup failed", e);
         }
 
         // 2. Fallback to Registry DO
@@ -43,7 +45,7 @@ export class MetadataService {
                 expirationTtl: 86400 // 24 hours
             });
         } catch (e) {
-            console.warn("KV Cache update failed", e);
+            this.log.warn("MetadataService", "KV cache update failed", e);
         }
 
         return metadata;
@@ -59,9 +61,13 @@ export class MetadataService {
             throw new Error(`Table not found: ${tableName}`); // Will be converted to ResourceNotFoundException in index.ts
         }
 
-        // Invalidate Cache
-        const cacheKey = this.getCacheKey(tableName);
-        await this.env.TABLE_METADATA_CACHE.delete(cacheKey);
+        // Invalidate Cache (best-effort)
+        try {
+            const cacheKey = this.getCacheKey(tableName);
+            await this.env.TABLE_METADATA_CACHE.delete(cacheKey);
+        } catch (e) {
+            this.log.warn("MetadataService", "KV cache invalidation failed (non-critical)", e);
+        }
 
         return result;
     }

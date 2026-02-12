@@ -1,11 +1,10 @@
-import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
+import { defineConfig } from "vitest/config";
 
-export default defineWorkersConfig({
+export default defineConfig({
     test: {
-        poolOptions: {
-            workers: {
-                wrangler: { configPath: "./wrangler.jsonc" },
-            },
-        },
+        // Tests run as pure HTTP clients against a local dev server.
+        // No worker pool needed — just standard vitest.
+        testTimeout: 30000,
+        hookTimeout: 30000,
     },
 });

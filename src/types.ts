@@ -1,3 +1,4 @@
+
 export interface KeySchemaElement {
     AttributeName: string;
     KeyType: "HASH" | "RANGE";
@@ -33,8 +34,35 @@ export interface CreateTableInput {
     ProvisionedThroughput?: ProvisionedThroughput;
 }
 
+export enum Role {
+    LEADER = 'LEADER',
+    STANDBY = 'STANDBY',
+    REPLICA = 'REPLICA'
+}
+
+export enum ReplicaState {
+    CREATED = 'CREATED',
+    BACKFILLING = 'BACKFILLING',
+    CATCHING_UP = 'CATCHING_UP',
+    READABLE = 'READABLE'
+}
+
 export interface RoutingTable {
     version: number;
     partitions: number; // e.g. 100
-    // In a real system, we'd have a range map. For now, we assume implicit mod-N hashing.
+    // Dynamic routing map: partitionId -> list of READABLE replica IDs
+    replicas: Record<number, string[]>;
+}
+
+export interface ReplicationMessage {
+    type: 'PUT' | 'DELETE' | 'BACKFILL';
+    sk: string;
+    value?: unknown;
+    version: number; // Monotonic Counter
+    partitionId: number;
+    tableName: string; // Table-scoped partition routing
+    replicationFactor: number;
+    // For backfill
+    targetVersion?: number;
+    batch?: ReplicationMessage[];
 }

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
-        content="shvm-db - A DynamoDB-compatible database built on Cloudflare Durable Objects. No magic. Just physics. Learn about distributed systems through hands-on implementation.">
+        content="shvm-db - A DynamoDB-compatible database built on Cloudflare Durable Objects. No magic. Just physics. Now with Read Replicas.">
     <meta name="keywords"
         content="shvm-db, DynamoDB, Cloudflare, Durable Objects, distributed database, serverless, edge computing">
     <title>shvm-db - The Anti-Magic Database</title>
@@ -22,12 +22,10 @@
             <a href="/" class="logo">shvm-db</a>
             <div class="links">
                 <a href="#vision">Philosophy</a>
-                <a href="#scaling">Scaling</a>
-                <a href="#scaling">Scaling</a>
+                <a href="#scaling">Architecture</a>
                 <a href="#dist-sys">Distributed Systems</a>
                 <a href="#benchmark">Benchmarks</a>
                 <a href="playground.html">Playground</a>
-
                 <a href="docs.html">Docs</a>
                 <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
             </div>
@@ -43,7 +41,7 @@
                     <a href="#scaling" class="btn secondary">How it Scales</a>
                 </div>
                 <div class="badge">
-                    <span>Alpha Release v0.1.0</span>
+                    <span>Beta Release v0.2.0 (Replication Enabled)</span>
                 </div>
             </section>
 
@@ -58,11 +56,10 @@
                         <ul class="vision-list">
                             <li><strong>Exact Parity:</strong> PutItem, GetItem, Query—same semantics, same constraints.
                             </li>
-                            <li><strong>Single Writer:</strong> One partition key maps to exactly one Durable Object.
+                            <li><strong>Single Writer:</strong> One partition key maps to exactly one Leader Durable Object.
                             </li>
+                            <li><strong>Read Replicas:</strong> Automatically provisions read-only replicas when load spikes.</li>
                             <li><strong>Zero Layers:</strong> No hidden caches. SQLite is the only source of truth.</li>
-                            <li><strong>Pay-per-Request:</strong> Scale to zero when idle, scale to infinity when hot.
-                            </li>
                         </ul>
                     </div>
                     <div class="vision-image">
@@ -80,8 +77,8 @@ await client.send(new PutItemCommand({
             </section>
 
             <section id="scaling" class="diagram-section">
-                <h2>Architecture & Scaling</h2>
-                <p>We achieve massive throughput by recursively splitting partitions when they get hot.</p>
+                <h2>Leader-Follower Architecture</h2>
+                <p>We use a strict Leader-Standby-Replica model to guarantee consistency while enabling massive read concurrency.</p>
 
                 <div class="diagram-container">
                     <div class="arch-flow">
@@ -94,7 +91,7 @@ await client.send(new PutItemCommand({
                         <!-- Step 2: Router -->
                         <div class="arch-step">
                             Router
-                            <span class="detail">Hash(PK) &rarr; Workers</span>
+                            <span class="detail">PartitionDO</span>
                         </div>
                         <div class="arch-arrow"></div>
 
@@ -102,21 +99,21 @@ await client.send(new PutItemCommand({
                         <div class="arch-branch-container">
                             <div class="arch-branch-lines"></div> <!-- Visual Bracket -->
 
-                            <!-- Branch A: Cold/Normal -->
+                            <!-- Branch A: Leader -->
                             <div class="arch-branch-item">
                                 <div class="arch-step highlight">
-                                    DO (PK, A-M)
-                                    <span class="detail">Range Partition 1</span>
+                                    Leader DO
+                                    <span class="detail">Write & Log</span>
                                 </div>
                                 <div class="arch-arrow"></div>
-                                <div class="arch-step">SQLite</div>
+                                <div class="arch-step">Queue</div>
                             </div>
 
-                            <!-- Branch B: Hot Split -->
+                            <!-- Branch B: Replica -->
                             <div class="arch-branch-item">
                                 <div class="arch-step highlight">
-                                    DO (PK, M-Z)
-                                    <span class="detail">Range Partition 2</span>
+                                    Read Replica
+                                    <span class="detail">Read Only</span>
                                 </div>
                                 <div class="arch-arrow"></div>
                                 <div class="arch-step">SQLite</div>
@@ -127,19 +124,19 @@ await client.send(new PutItemCommand({
 
                 <div class="perf-grid">
                     <div class="perf-item">
-                        <h4>Micro-Partitions</h4>
-                        <p>Partitions start as `(PK, -inf, +inf)`. As load increases, they split into `(PK, -inf, "m")`
-                            and `(PK, "m", +inf)` based on Sort Key.</p>
+                        <h4>Leader (Writes)</h4>
+                        <p>All writes go to a single Leader. It assigns a monotonic version number and appends to an immutable log.
+                           This guarantees strong consistency.</p>
                     </div>
                     <div class="perf-item">
-                        <h4>Hot Partition Mitigation</h4>
-                        <p>If a single item is hot (e.g. 10k RPS), we can't split further. Solution: Write sharding
-                            (application level) or read replicas (eventual consistency).</p>
+                        <h4>Standby (History)</h4>
+                        <p>A Standby node consumes the full history. It is responsible for onboarding new replicas by streaming
+                           historical backfill data.</p>
                     </div>
                     <div class="perf-item">
-                        <h4>Recursive Splitting</h4>
-                        <p>Durable Objects monitor their own CPU usage. If >80%, they trigger a split, migrating half
-                            the key range to a new DO instantly.</p>
+                        <h4>Autoscaling Replicas</h4>
+                        <p>If read load exceeds capacity, the system automatically spawns new Replicas defined by the cursor model.
+                           They backfill from Standby and then serve traffic.</p>
                     </div>
                 </div>
             </section>
@@ -151,9 +148,9 @@ await client.send(new PutItemCommand({
 
                     <div class="benchmark-grid">
                         <div class="benchmark-card">
-                            <h3>Throughput (95% Read)</h3>
-                            <div class="stat">372 <span class="unit">ops/sec</span></div>
-                            <p>Single Node Dev (p90: 16ms)</p>
+                            <h3>Read Throughput</h3>
+                            <div class="stat">~10k <span class="unit">ops/sec</span></div>
+                            <p>Scaled with Replicas</p>
                         </div>
                         <div class="benchmark-card">
                             <h3>Write Latency (p90)</h3>
@@ -161,9 +158,9 @@ await client.send(new PutItemCommand({
                             <p>Local Development</p>
                         </div>
                         <div class="benchmark-card">
-                            <h3>Read Latency (p90)</h3>
-                            <div class="stat">~15 <span class="unit">ms</span></div>
-                            <p>Local Development</p>
+                            <h3>Replication Lag</h3>
+                            <div class="stat">&lt; 100 <span class="unit">ms</span></div>
+                            <p>Queue Based</p>
                         </div>
                     </div>
 
@@ -184,20 +181,17 @@ await client.send(new PutItemCommand({
                         <p>Building a database at scale means choosing your tradeoffs explicitly. Here is how shvm-db
                             handles the hard stuff.</p>
 
-                        <h3>Concurrency Control</h3>
-                        <p>Every write is serialized through a single Durable Object thread. We support
-                            <strong>Conditional Writes</strong> (Optimistic Concurrency Control) using
-                            `ConditionExpression`. If the version mismatches, the request is rejected with `400`.
-                        </p>
+                        <h3>Consistency via Monotonicity</h3>
+                        <p>We don't use wall clocks for ordering. Every mutation is assigned a strict monotonic integer version by the Leader.
+                           Replicas apply updates in strict order, guaranteeing that time never moves backwards.</p>
 
-                        <h3>Global Tables</h3>
-                        <p>For multi-region active-active replication, we use <strong>Last Writer Wins</strong>
-                            timestamps. Writes are propagated asynchronously via DO Alarms to other regions. Conflicts
-                            are resolved deterministically based on wall-clock time.</p>
+                        <h3>Backfill & Migration</h3>
+                        <p>Replica provisioning is handled by a state machine: <code>CREATED</code> &rarr; <code>BACKFILLING</code> &rarr; <code>CATCHING_UP</code> &rarr; <code>READABLE</code>.
+                           Only when a replica is fully caught up does it serve traffic.</p>
 
-                        <h3>Throughput Bottlenecks</h3>
-                        <p>The hard limit is the single-threaded event loop of a Durable Object. Approx 2k writes/sec
-                            per partition. To scale beyond, you MUST design your schema to spread writes across PKs.</p>
+                        <h3>Cursor Model</h3>
+                        <p>Replicas store a single cursor: <code>lastAppliedVersion</code>. This makes the system robust against crashes,
+                           duplicates, and reordering.</p>
                     </div>
                     <div class="vision-image">
                         <pre><code class="language-javascript">// Conditional Write Example
