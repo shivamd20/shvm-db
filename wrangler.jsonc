@@ -7,6 +7,12 @@
 	"name": "shvm-db",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-11-28",
+	"routes": [
+		{
+			"pattern": "db.shvm.in",
+			"custom_domain": true
+		}
+	],
 	"migrations": [
 		{
 			"tag": "v1",

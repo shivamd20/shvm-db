@@ -101,7 +101,7 @@ describe("Table Modeling Integration", () => {
         expect(body.__type).toBe("ValidationException");
     });
 
-    it("should enforce schema validation (missing key)", async () => {
+    it("should allow missing SK key (defaults to default)", async () => {
         const item = {
             TableName: tableName,
             Item: {
@@ -111,7 +111,7 @@ describe("Table Modeling Integration", () => {
         };
 
         const res = await client.dynamoRequest("DynamoDB_20120810.PutItem", item);
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(200);
     });
 
     it("should provide data isolation between tables", async () => {

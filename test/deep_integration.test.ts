@@ -344,6 +344,34 @@ describe("5. Sort Key Operations", () => {
         expect(body.Item).toBeDefined();
         expect(body.Item.Name.S).toBe("Test Item");
     });
+
+    it("should allow PutItem without SK and default it", async () => {
+        const tableName = TestClient.uniqueTableName("OptSK");
+        // Create table with SK required in schema
+        await client.createTable(tableName, { hashKey: "PK", rangeKey: "SK", hashType: "S", rangeType: "S" });
+
+        const pk = "user_no_sk";
+
+        // Put without SK
+        const res = await client.putItem(tableName, {
+            PK: { S: pk },
+            Val: { S: "no_sk_provided" }
+        });
+        expect(res.status).toBe(200);
+
+        // Verify it was stored with SK="default"
+        const getRes = await client.getItem(tableName, {
+            PK: { S: pk },
+            SK: { S: "default" }
+        });
+        expect(getRes.status).toBe(200);
+        const body = await getRes.json() as any;
+        expect(body.Item).toBeDefined();
+        expect(body.Item.Val.S).toBe("no_sk_provided");
+        // Verify the item itself has the SK attribute injected
+        expect(body.Item.SK).toBeDefined();
+        expect(body.Item.SK.S).toBe("default");
+    });
 });
 
 // ============================================================================
@@ -386,14 +414,14 @@ describe("6. Schema Validation", () => {
         expect(res.status).toBe(400);
     });
 
-    it("should reject PutItem with missing SK on composite key table", async () => {
+    it("should allow PutItem with missing SK on composite key table (defaults to 'default')", async () => {
         const tableName = TestClient.uniqueTableName("ValMissSK");
         await client.createTable(tableName, { hashKey: "PK", rangeKey: "SK" });
 
         const res = await client.putItem(tableName, {
             PK: { S: "only_pk" }
         });
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(200);
     });
 
     it("should reject GetItem without TableName", async () => {

@@ -9,10 +9,12 @@
 		"start": "wrangler dev",
 		"test": "vitest run",
 		"test:local": "vitest run",
+		"test:live": "TEST_URL=https://db.shvm.in vitest run",
 		"cf-typegen": "wrangler types",
 		"benchmark:setup": "chmod +x benchmarks/*.sh && chmod +x benchmarks/ycsb-dist/bin/ycsb.sh",
 		"benchmark:compat": "./benchmarks/run_dynamo_compat.sh",
 		"benchmark:run": "./benchmarks/run_benchmark.sh",
+		"benchmark:live": "./benchmarks/run_benchmark.sh --endpoint https://db.shvm.in/api",
 		"deploy:live": "wrangler deploy && echo 'Live deployment active. Update your client config to point to the deployed URL.'"
 	},
 	"devDependencies": {

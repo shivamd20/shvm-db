@@ -40,10 +40,28 @@ export function validateItemAgainstSchema(item: any, metadata: TableMetadata): v
     // 2. Validate Keys Existence and Types
     for (const keySchema of metadata.KeySchema) {
         const attrName = keySchema.AttributeName;
-        const attrVal = item[attrName];
+        let attrVal = item[attrName];
 
         if (!attrVal) {
-            throw new ValidationError(`Missing key attribute: ${attrName}`);
+            if (keySchema.KeyType === 'RANGE') {
+                const def = metadata.AttributeDefinitions.find(d => d.AttributeName === attrName);
+                if (def) {
+                    if (def.AttributeType === 'S') {
+                        attrVal = { S: "default" };
+                        item[attrName] = attrVal;
+                    } else if (def.AttributeType === 'N') {
+                        attrVal = { N: "0" };
+                        item[attrName] = attrVal;
+                    } else if (def.AttributeType === 'B') {
+                        attrVal = { B: "" };
+                        item[attrName] = attrVal;
+                    }
+                }
+            }
+
+            if (!attrVal) {
+                throw new ValidationError(`Missing key attribute: ${attrName}`);
+            }
         }
 
         const def = metadata.AttributeDefinitions.find(d => d.AttributeName === attrName);
