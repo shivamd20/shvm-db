@@ -20,11 +20,12 @@
         <header>
             <a href="/" class="logo">shvm-db</a>
             <div class="links">
-                <a href="/#vision">Philosophy</a>
-                <a href="/#scaling">Scaling</a>
-                <a href="/#dist-sys">Distributed Systems</a>
+                <a href="/index.html#vision">Philosophy</a>
+                <a href="/index.html#scaling">Architecture</a>
+                <a href="/index.html#dist-sys">Distributed Systems</a>
+                <a href="/benchmark-logs.html">Benchmarks</a>
                 <a href="/playground.html">Playground</a>
-                <a href="/docs.html">Docs</a>
+                <a href="/docs.html" class="active">Docs</a>
                 <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
             </div>
         </header>
@@ -112,7 +113,8 @@ curl -X POST https://shvm-db.workers.dev/api \
                     <ul>
                         <li><strong>Monitoring:</strong> The PartitionDO tracks request rates in real-time.</li>
                         <li><strong>Trigger:</strong> When load exceeds a threshold, the system triggers the
-                            <code>provisionReplica</code> workflow.</li>
+                            <code>provisionReplica</code> workflow.
+                        </li>
                         <li><strong>Scale Up:</strong> A new Durable Object is created, it backfills from Standby, and
                             once caught up, it joins the routing table.</li>
                         <li><strong>Zero Downtime:</strong> The system continues to serve reads from existing replicas

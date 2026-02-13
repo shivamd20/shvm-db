@@ -3,6 +3,7 @@ import { DurableObject } from "cloudflare:workers";
 import { SubDO } from "./sub-do";
 import { RoutingTable, ReplicaState, Role } from "./types";
 import { createDOLogger, Logger } from "./debug";
+import { PartitionDOQueries } from "./sql/queries";
 
 export interface Env {
     PARTITION_DO: DurableObjectNamespace<PartitionDO>;
@@ -20,31 +21,22 @@ export class PartitionDO extends DurableObject<Env> {
         this.sql = ctx.storage.sql;
         this.log = createDOLogger(env.SHVM_DEBUG);
 
-        this.sql.exec(`
-            CREATE TABLE IF NOT EXISTS replicas (
-                id TEXT PRIMARY KEY,
-                state TEXT,
-                last_seen INTEGER
-            );
-        `);
+        this.sql.exec(PartitionDOQueries.Schema.CREATE_REPLICAS);
         this.log("PartitionDO", `constructor id=${ctx.id.toString()}`);
     }
 
     async registerReplica(replicaId: string): Promise<void> {
         this.log("PartitionDO", `registerReplica id=${replicaId}`);
-        this.sql.exec(`
-            INSERT OR REPLACE INTO replicas (id, state, last_seen) 
-            VALUES (?, ?, ?)
-        `, replicaId, ReplicaState.READABLE, Date.now());
+        this.sql.exec(PartitionDOQueries.Replicas.REGISTER, replicaId, ReplicaState.READABLE, Date.now());
     }
 
     async deregisterReplica(replicaId: string): Promise<void> {
         this.log("PartitionDO", `deregisterReplica id=${replicaId}`);
-        this.sql.exec("DELETE FROM replicas WHERE id = ?", replicaId);
+        this.sql.exec(PartitionDOQueries.Replicas.DEREGISTER, replicaId);
     }
 
     async getRoutingConfig(): Promise<RoutingTable> {
-        const cursor = this.sql.exec("SELECT id FROM replicas WHERE state = ?", ReplicaState.READABLE);
+        const cursor = this.sql.exec(PartitionDOQueries.Replicas.GET_READABLE, ReplicaState.READABLE);
         const rows = Array.from(cursor);
         const replicaIds = rows.map((r: any) => r.id as string);
 
@@ -72,7 +64,7 @@ export class PartitionDO extends DurableObject<Env> {
     }
 
     async checkScaling() {
-        const cursor = this.sql.exec("SELECT count(*) as count FROM replicas WHERE state = ?", ReplicaState.READABLE);
+        const cursor = this.sql.exec(PartitionDOQueries.Replicas.COUNT_READABLE, ReplicaState.READABLE);
         const count = (Array.from(cursor)[0] as any).count as number;
 
         this.log("PartitionDO", `checkScaling: readable_replicas=${count}`);
@@ -89,7 +81,7 @@ export class PartitionDO extends DurableObject<Env> {
 
     /** List all replicas for observability */
     async listReplicas(): Promise<{ id: string; state: string; lastSeen: number }[]> {
-        const cursor = this.sql.exec("SELECT id, state, last_seen FROM replicas");
+        const cursor = this.sql.exec(PartitionDOQueries.Replicas.LIST_ALL);
         const rows = Array.from(cursor) as any[];
         return rows.map(r => ({ id: r.id, state: r.state, lastSeen: r.last_seen }));
     }

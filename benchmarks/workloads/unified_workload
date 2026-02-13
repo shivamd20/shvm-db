@@ -1,17 +1,14 @@
 # ============================================================
-# shvm-db Benchmark
-# Workload: Read Heavy (DynamoDB-like)
+# shvm-db Unified Benchmark Workload
 #
-# - 95% reads, 5% updates
-# - NO inserts during transaction phase
-# - Assumes data already loaded
-# - Zipfian access pattern (hot keys)
+# - Mix of Read, Update, Insert
+# - Zipfian distribution to test hot keys/partitioning
 # ============================================================
 
 workload=site.ycsb.workloads.CoreWorkload
 
 # -----------------------------
-# Dataset size (must match load)
+# Dataset size
 # -----------------------------
 recordcount=10000
 operationcount=50000
@@ -21,9 +18,10 @@ operationcount=50000
 # -----------------------------
 readallfields=true
 
-readproportion=0.95
-updateproportion=0.05
-insertproportion=0
+# 50% Read, 30% Update, 20% Insert
+readproportion=0.5
+updateproportion=0.3
+insertproportion=0.2
 scanproportion=0
 
 # -----------------------------

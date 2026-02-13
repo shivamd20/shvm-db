@@ -628,12 +628,38 @@ footer {
         grid-template-columns: 1fr;
     }
 
+    /* Header Mobile */
+    header {
+        flex-direction: column;
+        gap: 15px;
+        padding-bottom: 15px;
+    }
+
+    .links {
+        margin-left: 0;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .links a {
+        margin: 0 8px;
+        font-size: 0.9rem;
+    }
+
+    /* Layout Mobile */
     .docs-layout {
         grid-template-columns: 1fr;
     }
 
     .docs-sidebar {
-        display: none;
+        display: block;
+        position: relative;
+        top: 0;
+        border-right: none;
+        border-bottom: 1px solid #222;
+        margin-bottom: 40px;
+        padding-bottom: 20px;
     }
 
     .arch-flow {

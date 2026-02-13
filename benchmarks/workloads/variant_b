@@ -1,41 +1,41 @@
 # ============================================================
-# shvm-db Benchmark
+# Variant B: Sustained Mixed Load Test
 # ============================================================
 
 workload=site.ycsb.workloads.CoreWorkload
 
 # -----------------------------
-# Dataset size (must match load)
+# Dataset size
 # -----------------------------
-recordcount=10000
-operationcount=50000
+recordcount=20000
+operationcount=80000
 
 # -----------------------------
 # Operation mix
+# Realistic SaaS workload
 # -----------------------------
 readallfields=true
-
-readproportion=0.95
-updateproportion=0.02
-insertproportion=0.03
-scanproportion=0.00
+readproportion=0.6
+updateproportion=0.25
+insertproportion=0.15
+scanproportion=0
 
 # -----------------------------
 # Access pattern
+# More realistic distribution
 # -----------------------------
-requestdistribution=zipfian
+requestdistribution=latest
 
 # -----------------------------
-# shvm-db connection
+# Connection
 # -----------------------------
 db=site.ycsb.db.DynamoDBClient
 dynamodb.endpoint=http://localhost:8787
-# shvmdb.table is auto-generated for isolation
 
 # -----------------------------
 # Concurrency
 # -----------------------------
-threadcount=32
+threadcount=6
 
 # -----------------------------
 # Measurements

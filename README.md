@@ -1,5 +1,7 @@
 # shvm-db
 
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/shivamd20/shvm-db)
+
 ## Motivation
 
 DynamoDB proves that a **simple API + brutal operational discipline** can scale to absurd throughput. What it hides, however, is *how* much of that power comes from partitioning, routing, and automation rather than any magical storage engine.
@@ -91,20 +93,28 @@ If it smells like Spanner, it is out.
 
 ## MVP Architecture
 
-### Core Simplification (Revised MVP)
+### Core Simplification (Revised)
 
-The MVP is intentionally reduced to the **minimum viable distributed system**.
+The system uses a **Two-Layer Architecture** to separate orchestration from storage.
 
-> **One partition key → one Durable Object → one SQLite database**
+1.  **PartitionDO (The Orchestrator)**:
+    *   Maps a Partition Key (PK) to a "logical partition".
+    *   Does **NOT** store data.
+    *   Maintains the `RoutingTable` (Leader ID, Replica IDs).
+    *   Handles autoscaling decisions (spawning new replicas).
+
+2.  **SubDO (The Data Plane)**:
+    *   Where the actual data lives.
+    *   **Leader SubDO**: Handles all writes for a PK. Serializes transactions.
+    *   **Replica SubDOs**: Read-only copies that tail the Leader via queue.
+    *   Each SubDO owns one SQLite database.
+
+> **One Partition Key → One PartitionDO (Orchestrator) → N SubDOs (Storage)**
 
 There is:
-
-* No in-memory hashmap
-* No Bloom filter
-* No in-memory WAL buffer
-* No background compaction logic
-
-SQLite is the **only read/write path**.
+*   No in-memory hashmap (Routing is calculated hash + DO lookup)
+*   No Bloom filter
+*   SQLite as the **only read/write path** inside SubDOs.
 
 This ensures correctness, debuggability, and eliminates premature optimization.
 
@@ -148,23 +158,28 @@ CREATE INDEX idx_sk ON items(sk);
 
 ### Write Path (PutItem)
 
-1. Route request → Durable Object(PK)
-2. Begin SQLite transaction
-3. `INSERT OR REPLACE` item
-4. Commit transaction
-5. Acknowledge write
+1.  **Router**: Hashes PK → determines `PartitionDO` ID.
+2.  **Orchestration**: Checks `PartitionDO` (cached) for the current **Leader SubDO** ID.
+3.  **Action**: Forwards request to **Leader SubDO**.
+4.  **Transaction**: Leader begins SQLite transaction.
+5.  **Commit**: `INSERT OR REPLACE` item.
+6.  **Replication**: Leader enqueues mutation to `ReplicationQueue` (for Standby/Replicas).
+7.  **Ack**: Returns success to client.
 
-Durability relies entirely on SQLite WAL.
+Durability relies on SQLite WAL + Cloudflare Queue guarantees.
 
 ---
 
 ### Read Path (GetItem)
 
-1. Route request → Durable Object(PK)
-2. Execute SQLite `SELECT`
-3. Return result
+1.  **Router**: Hashes PK → `PartitionDO`.
+2.  **Orchestration**: Fetches `RoutingTable` (list of active Replicas).
+3.  **Selection**: Randomly selects a **Replica SubDO** (or Leader if no replicas).
+4.  **Action**: Forwards request to selected SubDO.
+5.  **Execution**: SubDO executes SQLite `SELECT`.
+6.  **Return**: Result returned to client.
 
-No caching, no overlays.
+No caching, no overlays. Just routing and SQLite.
 
 ---
 

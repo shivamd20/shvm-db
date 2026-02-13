@@ -1,8 +1,5 @@
 # ============================================================
-# shvm-db Benchmark
-# Workload: 70% Read / 30% Update
-# NO inserts during transaction phase
-# Large dataset + hot-key skew
+# Variant C: Concurrency Scaling
 # ============================================================
 
 workload=site.ycsb.workloads.CoreWorkload
@@ -10,40 +7,40 @@ workload=site.ycsb.workloads.CoreWorkload
 # -----------------------------
 # Dataset size
 # -----------------------------
-recordcount=200000
-operationcount=500000
+recordcount=15000
+operationcount=60000
 
 # -----------------------------
 # Operation mix
+# Read heavy to isolate contention
 # -----------------------------
 readallfields=true
-
-readproportion=0.40
-updateproportion=0.30
-insertproportion=0.30
+readproportion=0.8
+updateproportion=0.15
+insertproportion=0.05
 scanproportion=0
 
 # -----------------------------
 # Access pattern
+# Uniform to avoid hot partition bias
 # -----------------------------
-; requestdistribution=zipfian
 requestdistribution=uniform
 
-
 # -----------------------------
-# shvm-db connection
+# Connection
 # -----------------------------
 db=site.ycsb.db.DynamoDBClient
 dynamodb.endpoint=http://localhost:8787
-shvmdb.table=usertable
 
 # -----------------------------
 # Concurrency
+# Change this between runs:
+# 2 → 4 → 8 → 12
 # -----------------------------
-threadcount=16
+threadcount=4
 
 # -----------------------------
 # Measurements
 # -----------------------------
 measurementtype=hdrhistogram
-hdrhistogram.percentiles=50,90,95,99,99.9,99.99
+hdrhistogram.percentiles=50,90,95,99,99.9

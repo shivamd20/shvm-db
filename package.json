@@ -11,7 +11,9 @@
 		"test:local": "vitest run",
 		"cf-typegen": "wrangler types",
 		"benchmark:setup": "chmod +x benchmarks/*.sh && chmod +x benchmarks/ycsb-dist/bin/ycsb.sh",
-		"benchmark:compat": "./benchmarks/run_dynamo_compat.sh"
+		"benchmark:compat": "./benchmarks/run_dynamo_compat.sh",
+		"benchmark:run": "./benchmarks/run_benchmark.sh",
+		"deploy:live": "wrangler deploy && echo 'Live deployment active. Update your client config to point to the deployed URL.'"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20240208.0",

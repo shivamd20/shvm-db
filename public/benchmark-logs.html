@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>shvm-db - Benchmark Logs</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&family=Fira+Code&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .benchmark-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+            min-height: 600px;
+        }
+
+        .run-list {
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding-right: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .run-item {
+            padding: 1rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .run-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .run-item.active {
+            background: rgba(var(--primary-rgb), 0.1);
+            border-color: var(--primary);
+        }
+
+        .run-date {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 0.2rem;
+        }
+
+        .run-id {
+            font-family: 'Fira Code', monospace;
+            font-weight: 600;
+            color: var(--text-heading);
+        }
+
+        .detail-view {
+            padding: 1rem;
+        }
+
+        .variant-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 0.5rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: #888;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-val {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+            font-family: 'Fira Code', monospace;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 0.5rem;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            height: 300px;
+        }
+
+        .config-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .config-table th,
+        .config-table td {
+            text-align: left;
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .config-table th {
+            color: #888;
+        }
+
+        .status-msg {
+            text-align: center;
+            color: #888;
+            padding: 2rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="logo">shvm-db</a>
+            <div class="links">
+                <a href="/index.html#vision">Philosophy</a>
+                <a href="/index.html#scaling">Architecture</a>
+                <a href="/index.html#dist-sys">Distributed Systems</a>
+                <a href="/benchmark-logs.html" class="active">Benchmarks</a>
+                <a href="/playground.html">Playground</a>
+                <a href="/docs.html">Docs</a>
+                <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero" style="min-height: auto; padding: 4rem 0 2rem;">
+                <h1>Benchmark <span class="gradient-text">Logs</span></h1>
+                <p class="subtitle">Inspect performance runs in detail. Transparency is key.</p>
+            </section>
+
+            <div class="benchmark-container">
+                <div class="run-list" id="runList">
+                    <div class="status-msg">Loading runs...</div>
+                </div>
+
+                <div class="detail-view" id="detailView">
+                    <div class="status-msg">Select a run to view details</div>
+                </div>
+            </div>
+
+            <footer>
+                <div class="footer-links">
+                    <a href="https://github.com/shivamd20/shvm-db">GitHub</a>
+                    <a href="docs.html">Documentation</a>
+                </div>
+                <p>&copy; 2026 shvm-db. Open Source.</p>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        // State
+        let runs = [];
+        let currentRun = null;
+        let currentVariantIndex = 0;
+        let charts = {};
+
+        // DOM Elements
+        const runListEl = document.getElementById('runList');
+        const detailViewEl = document.getElementById('detailView');
+
+        // Fetch Data
+        async function init() {
+            try {
+                const response = await fetch('/benchmarks/index.json');
+                if (!response.ok) throw new Error('Failed to load benchmark index');
+                runs = await response.json();
+                renderRunList();
+
+                // Check URL params
+                const params = new URLSearchParams(window.location.search);
+                const runId = params.get('runId');
+                const variantIndexParam = params.get('variant');
+
+                if (runId && runs.find(r => r.id === runId)) {
+                    await loadRun(runId, parseInt(variantIndexParam) || 0);
+                } else if (runs.length > 0) {
+                    await loadRun(runs[0].id, 0);
+                } else {
+                    runListEl.innerHTML = '<div class="status-msg">No runs found.</div>';
+                }
+            } catch (err) {
+                console.error(err);
+                runListEl.innerHTML = '<div class="status-msg">Error loading benchmarks. Ensure you ran "npm run benchmark:run".</div>';
+            }
+        }
+
+        function renderRunList() {
+            runListEl.innerHTML = '';
+            runs.forEach(run => {
+                const el = document.createElement('div');
+                el.className = `run-item ${currentRun && currentRun.id === run.id ? 'active' : ''}`;
+                el.onclick = () => loadRun(run.id, 0);
+
+                const date = new Date(run.id.replace(/(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6'));
+
+                el.innerHTML = `
+                    <div class="run-date">${date.toLocaleString()}</div>
+                    <div class="run-id">${run.id}</div>
+                `;
+                runListEl.appendChild(el);
+            });
+        }
+
+        function updateUrl(runId, variantIndex) {
+            const url = new URL(window.location);
+            url.searchParams.set('runId', runId);
+            url.searchParams.set('variant', variantIndex);
+            window.history.pushState({}, '', url);
+        }
+
+        async function loadRun(runId, variantIndex = 0) {
+            // Update URL
+            updateUrl(runId, variantIndex);
+
+            // Update UI
+            document.querySelectorAll('.run-item').forEach(el => el.classList.remove('active'));
+            const activeItem = [...runListEl.children].find(el => el.textContent.includes(runId));
+            if (activeItem) activeItem.classList.add('active');
+
+            detailViewEl.innerHTML = '<div class="status-msg">Loading details...</div>';
+
+            try {
+                const response = await fetch(`/benchmarks/${runId}/results.json`);
+                if (!response.ok) throw new Error('Failed to load run details');
+                const data = await response.json();
+                currentRun = data;
+                currentVariantIndex = variantIndex;
+                renderDetailView();
+            } catch (err) {
+                detailViewEl.innerHTML = `<div class="status-msg">Error: ${err.message}</div>`;
+            }
+        }
+
+        function renderDetailView() {
+            if (!currentRun) return;
+
+            const variant = currentRun.results[currentVariantIndex];
+            if (!variant) return;
+
+            // Tabs
+            let tabsHtml = '<div class="variant-tabs">';
+            currentRun.results.forEach((v, idx) => {
+                tabsHtml += `<button class="tab-btn ${idx === currentVariantIndex ? 'active' : ''}" 
+                    onclick="switchVariant(${idx})">${v.variant}</button>`;
+            });
+            tabsHtml += '</div>';
+
+            // Metrics
+            const overall = variant.metrics["OVERALL"] || {};
+            const read = variant.metrics["READ"] || {};
+            const update = variant.metrics["UPDATE"] || {};
+            const insert = variant.metrics["INSERT"] || {};
+
+            // Helper to get latency
+            const formatLat = (val) => val ? (val / 1000).toFixed(2) : '-';
+            const getLatency = (op) => variant.metrics[op] ? formatLat(variant.metrics[op]["AverageLatency(us)"]) : '-';
+            const getP99 = (op) => variant.metrics[op] ? formatLat(variant.metrics[op]["99thPercentileLatency(us)"]) : '-';
+
+            // Throughput
+            const throughput = Math.round(overall["Throughput(ops/sec)"] || 0).toLocaleString();
+
+            let contentHtml = `
+                <h2>${variant.variant} Results</h2>
+                
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-val">${throughput}</div>
+                        <div class="metric-label">Ops/Sec</div>
+                    </div>
+                     <div class="metric-card">
+                        <div class="metric-val">${getLatency("READ")}</div>
+                        <div class="metric-label">Avg Read Latency (ms)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-val">${getP99("READ")}</div>
+                        <div class="metric-label">p99 Read Latency (ms)</div>
+                    </div>
+                     <div class="metric-card">
+                        <div class="metric-val">${getLatency("UPDATE") !== '-' ? getLatency("UPDATE") : getLatency("INSERT")}</div>
+                        <div class="metric-label">Avg Write Latency (ms)</div>
+                    </div>
+                </div>
+
+                <h3>Latency Histogram</h3>
+                <div class="chart-container">
+                    <canvas id="latencyChart"></canvas>
+                </div>
+
+                <h3>Configuration</h3>
+                <table class="config-table">
+                    <thead>
+                        <tr><th>Parameter</th><th>Value</th></tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(variant.config).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            detailViewEl.innerHTML = tabsHtml + contentHtml;
+
+            // Render Chart
+            renderChart(variant);
+        }
+
+        window.switchVariant = (idx) => {
+            currentVariantIndex = idx;
+            updateUrl(currentRun.id, idx);
+            renderDetailView();
+        }
+
+        function renderChart(variant) {
+            const ctx = document.getElementById('latencyChart').getContext('2d');
+
+            // Destroy existing chart if any (though we rewrite container HTML so canvas is new)
+            // But good practice if we reused canvas
+
+            // Prepare data for bar chart comparing Read/Update/Insert
+            const ops = [];
+            const avg = [];
+            const p99 = [];
+
+            ["READ", "UPDATE", "INSERT", "SCAN"].forEach(op => {
+                if (variant.metrics[op]) {
+                    ops.push(op);
+                    avg.push(variant.metrics[op]["AverageLatency(us)"] / 1000);
+                    p99.push(variant.metrics[op]["99thPercentileLatency(us)"] / 1000);
+                }
+            });
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ops,
+                    datasets: [
+                        {
+                            label: 'Average Latency (ms)',
+                            data: avg,
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'p99 Latency (ms)',
+                            data: p99,
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: { color: '#888' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#888' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#fff' } }
+                    }
+                }
+            });
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

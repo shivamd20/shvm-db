@@ -1,41 +1,42 @@
 # ============================================================
-# shvm-db Benchmark
+# Variant A: Hot Partition Stress Test
 # ============================================================
 
 workload=site.ycsb.workloads.CoreWorkload
 
 # -----------------------------
-# Dataset size (must match load)
+# Dataset size (small to amplify hot keys)
 # -----------------------------
-recordcount=10000
-operationcount=50000
+recordcount=5000
+operationcount=30000
 
 # -----------------------------
 # Operation mix
+# Heavy writes to stress contention
 # -----------------------------
 readallfields=true
-
-readproportion=0
-updateproportion=0
-insertproportion=1
+readproportion=0.4
+updateproportion=0.4
+insertproportion=0.2
 scanproportion=0
 
 # -----------------------------
 # Access pattern
+# Extreme skew
 # -----------------------------
 requestdistribution=zipfian
+zipfianconstant=0.99
 
 # -----------------------------
-# shvm-db connection
+# Connection
 # -----------------------------
 db=site.ycsb.db.DynamoDBClient
 dynamodb.endpoint=http://localhost:8787
-# shvmdb.table is auto-generated for isolation
 
 # -----------------------------
 # Concurrency
 # -----------------------------
-threadcount=4
+threadcount=8
 
 # -----------------------------
 # Measurements

@@ -5,6 +5,7 @@ import { BLOOM_FILTER_SIZE, LRU_CACHE_CAPACITY } from "./constants";
 import type { PartitionDO } from "./partition-do";
 import { ReplicationMessage, Role, ReplicaState, AttributeValueUpdate } from "./types";
 import { createDOLogger, Logger } from "./debug";
+import { SubDOQueries } from "./sql/queries";
 
 export interface Env {
     PARTITION_DO: DurableObjectNamespace<PartitionDO>;
@@ -40,42 +41,28 @@ export class SubDO extends DurableObject<Env> {
     }
 
     private initializeStorage() {
-        this.sql.exec(`
-            CREATE TABLE IF NOT EXISTS metadata (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            );
-            CREATE TABLE IF NOT EXISTS items_v2 (
-                sk TEXT,
-                version INTEGER,
-                value BLOB,
-                deleted INTEGER DEFAULT 0,
-                PRIMARY KEY (sk, version DESC)
-            );
-            CREATE TABLE IF NOT EXISTS cursors (
-                id TEXT PRIMARY KEY,
-                val INTEGER
-            );
-        `);
+        this.sql.exec(SubDOQueries.Schema.CREATE_METADATA);
+        this.sql.exec(SubDOQueries.Schema.CREATE_ITEMS);
+        this.sql.exec(SubDOQueries.Schema.CREATE_CURSORS);
     }
 
     private loadState() {
         // Load Role
-        const roleCursor = this.sql.exec("SELECT value FROM metadata WHERE key = ?", "role");
+        const roleCursor = this.sql.exec(SubDOQueries.Metadata.GET, "role");
         const roleRow = Array.from(roleCursor)[0] as any;
         if (roleRow) {
             this.role = roleRow.value as Role;
         }
 
         // Load Cursor
-        const cursorIter = this.sql.exec("SELECT val FROM cursors WHERE id = ?", "lastApplied");
+        const cursorIter = this.sql.exec(SubDOQueries.Cursors.GET, "lastApplied");
         const cursorRow = Array.from(cursorIter)[0] as any;
         if (cursorRow) {
             this.lastAppliedVersion = cursorRow.val as number;
         }
 
         // Load Replica State
-        const stateIter = this.sql.exec("SELECT value FROM metadata WHERE key = ?", "replicaState");
+        const stateIter = this.sql.exec(SubDOQueries.Metadata.GET, "replicaState");
         const stateRow = Array.from(stateIter)[0] as any;
         if (stateRow) {
             this.replicaState = stateRow.value as ReplicaState;
@@ -88,7 +75,7 @@ export class SubDO extends DurableObject<Env> {
         if (this.role !== role) {
             this.log("SubDO", `init: role change ${this.role} -> ${role} (id=${this.state.id.toString()})`);
             this.role = role;
-            this.sql.exec("INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)", "role", role);
+            this.sql.exec(SubDOQueries.Metadata.SET, "role", role);
 
             if (role === Role.LEADER || role === Role.STANDBY) {
                 this.setReplicaState(ReplicaState.READABLE);
@@ -99,12 +86,12 @@ export class SubDO extends DurableObject<Env> {
     private setReplicaState(newState: ReplicaState) {
         this.log("SubDO", `state transition: ${this.replicaState} -> ${newState} (id=${this.state.id.toString()})`);
         this.replicaState = newState;
-        this.sql.exec("INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)", "replicaState", newState);
+        this.sql.exec(SubDOQueries.Metadata.SET, "replicaState", newState);
     }
 
     private persistCursor(v: number) {
         this.lastAppliedVersion = v;
-        this.sql.exec("INSERT OR REPLACE INTO cursors (id, val) VALUES (?, ?)", "lastApplied", v);
+        this.sql.exec(SubDOQueries.Cursors.SET, "lastApplied", v);
     }
 
     // --- LEADER ONLY ---
@@ -112,9 +99,9 @@ export class SubDO extends DurableObject<Env> {
     private getNextVersion(): number {
         // Atomic increment
         // In SQLite DO, we can use a sequence or just a singleton row
-        this.sql.exec("INSERT OR IGNORE INTO cursors (id, val) VALUES ('global_seq', 0)");
-        this.sql.exec("UPDATE cursors SET val = val + 1 WHERE id = 'global_seq'");
-        const cursor = this.sql.exec("SELECT val FROM cursors WHERE id = 'global_seq'");
+        this.sql.exec(SubDOQueries.Cursors.INIT_SEQ);
+        this.sql.exec(SubDOQueries.Cursors.INC_SEQ);
+        const cursor = this.sql.exec(SubDOQueries.Cursors.GET_SEQ);
         const row = Array.from(cursor)[0] as any;
         return row!.val as number;
     }
@@ -165,7 +152,7 @@ export class SubDO extends DurableObject<Env> {
 
         // 1. Read existing item (or empty if not exists/deleted)
         let currentItem: Record<string, any> = {};
-        const cursor = this.sql.exec(`SELECT value, deleted FROM items_v2 WHERE sk = ? ORDER BY version DESC LIMIT 1`, sk);
+        const cursor = this.sql.exec(SubDOQueries.Items.GET_LATEST, sk);
         const row = Array.from(cursor)[0] as any;
 
         if (row && (row.deleted as number) === 0) {
@@ -229,9 +216,7 @@ export class SubDO extends DurableObject<Env> {
     }
 
     private applyToLocal(sk: string, version: number, value: any, deleted: number) {
-        this.sql.exec(`
-            INSERT INTO items_v2 (sk, version, value, deleted) VALUES (?, ?, ?, ?)
-        `, sk, version, deleted === 0 ? JSON.stringify(value) : null, deleted);
+        this.sql.exec(SubDOQueries.Items.INSERT, sk, version, deleted === 0 ? JSON.stringify(value) : null, deleted);
 
         if (deleted === 0) {
             this.lru.put(sk, value);
@@ -261,11 +246,7 @@ export class SubDO extends DurableObject<Env> {
     async streamHistory(sinceVersion: number = 0, untilVersion: number): Promise<ReplicationMessage[]> {
         // Return full history as one batch for simplicity (or paginate if needed)
         // Cloudflare RPC supports streaming via ReadableStream, but let's stick to array for simplicity
-        const cursor = this.sql.exec(`
-            SELECT sk, version, value, deleted FROM items_v2 
-            WHERE version > ? AND version <= ? 
-            ORDER BY version ASC
-        `, sinceVersion, untilVersion);
+        const cursor = this.sql.exec(SubDOQueries.Items.GET_HISTORY, sinceVersion, untilVersion);
 
         const rows = Array.from(cursor) as any[];
 
@@ -288,7 +269,7 @@ export class SubDO extends DurableObject<Env> {
         this.setReplicaState(ReplicaState.BACKFILLING);
         this.migrationTargetVersion = targetVersion;
 
-        const standbyRef = this.sql.exec("SELECT value FROM metadata WHERE key = ?", "standbyRef");
+        const standbyRef = this.sql.exec(SubDOQueries.Metadata.GET, "standbyRef");
         const standbyRow = Array.from(standbyRef)[0] as any;
         const standbyId = standbyRow?.value || "partition-0-standby";
         this.log("SubDO", `[REPLICA] pulling history from standby=${standbyId}`);
@@ -336,7 +317,7 @@ export class SubDO extends DurableObject<Env> {
             return cached;
         }
 
-        const cursor = this.sql.exec(`SELECT value, deleted FROM items_v2 WHERE sk = ? ORDER BY version DESC LIMIT 1`, sk);
+        const cursor = this.sql.exec(SubDOQueries.Items.GET_LATEST, sk);
         const row = Array.from(cursor)[0] as any;
 
         if (!row || (row.deleted as number) === 1) {

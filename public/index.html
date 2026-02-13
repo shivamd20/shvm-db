@@ -21,12 +21,12 @@
         <header>
             <a href="/" class="logo">shvm-db</a>
             <div class="links">
-                <a href="#vision">Philosophy</a>
-                <a href="#scaling">Architecture</a>
-                <a href="#dist-sys">Distributed Systems</a>
-                <a href="#benchmark">Benchmarks</a>
-                <a href="playground.html">Playground</a>
-                <a href="docs.html">Docs</a>
+                <a href="/index.html#vision">Philosophy</a>
+                <a href="/index.html#scaling">Architecture</a>
+                <a href="/index.html#dist-sys">Distributed Systems</a>
+                <a href="/benchmark-logs.html">Benchmarks</a>
+                <a href="/playground.html">Playground</a>
+                <a href="/docs.html">Docs</a>
                 <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
             </div>
         </header>
@@ -37,8 +37,14 @@
                 <p class="subtitle">A distributed database built from first principles on Cloudflare Durable Objects.
                     Exact API compatibility with zero magic.</p>
                 <div class="cta-group">
-                    <a href="docs.html" class="btn primary">Get Started</a>
+                    <a href="/docs.html" class="btn primary">Get Started</a>
                     <a href="#scaling" class="btn secondary">How it Scales</a>
+                </div>
+                <div style="margin-top: 2rem; display: flex; justify-content: center;">
+                    <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/shivamd20/shvm-db"
+                        target="_blank">
+                        <img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare" />
+                    </a>
                 </div>
                 <div class="badge">
                     <span>Beta Release v0.2.0 (Replication Enabled)</span>
@@ -56,9 +62,11 @@
                         <ul class="vision-list">
                             <li><strong>Exact Parity:</strong> PutItem, GetItem, Query—same semantics, same constraints.
                             </li>
-                            <li><strong>Single Writer:</strong> One partition key maps to exactly one Leader Durable Object.
+                            <li><strong>Single Writer:</strong> One partition key maps to exactly one Leader Durable
+                                Object.
                             </li>
-                            <li><strong>Read Replicas:</strong> Automatically provisions read-only replicas when load spikes.</li>
+                            <li><strong>Read Replicas:</strong> Automatically provisions read-only replicas when load
+                                spikes.</li>
                             <li><strong>Zero Layers:</strong> No hidden caches. SQLite is the only source of truth.</li>
                         </ul>
                     </div>
@@ -78,7 +86,8 @@ await client.send(new PutItemCommand({
 
             <section id="scaling" class="diagram-section">
                 <h2>Leader-Follower Architecture</h2>
-                <p>We use a strict Leader-Standby-Replica model to guarantee consistency while enabling massive read concurrency.</p>
+                <p>We use a strict Leader-Standby-Replica model to guarantee consistency while enabling massive read
+                    concurrency.</p>
 
                 <div class="diagram-container">
                     <div class="arch-flow">
@@ -125,18 +134,21 @@ await client.send(new PutItemCommand({
                 <div class="perf-grid">
                     <div class="perf-item">
                         <h4>Leader (Writes)</h4>
-                        <p>All writes go to a single Leader. It assigns a monotonic version number and appends to an immutable log.
-                           This guarantees strong consistency.</p>
+                        <p>All writes go to a single Leader. It assigns a monotonic version number and appends to an
+                            immutable log.
+                            This guarantees strong consistency.</p>
                     </div>
                     <div class="perf-item">
                         <h4>Standby (History)</h4>
-                        <p>A Standby node consumes the full history. It is responsible for onboarding new replicas by streaming
-                           historical backfill data.</p>
+                        <p>A Standby node consumes the full history. It is responsible for onboarding new replicas by
+                            streaming
+                            historical backfill data.</p>
                     </div>
                     <div class="perf-item">
                         <h4>Autoscaling Replicas</h4>
-                        <p>If read load exceeds capacity, the system automatically spawns new Replicas defined by the cursor model.
-                           They backfill from Standby and then serve traffic.</p>
+                        <p>If read load exceeds capacity, the system automatically spawns new Replicas defined by the
+                            cursor model.
+                            They backfill from Standby and then serve traffic.</p>
                     </div>
                 </div>
             </section>
@@ -166,7 +178,8 @@ await client.send(new PutItemCommand({
 
                     <div style="margin-top: 30px; text-align: center;">
                         <p>We believe in transparency. Run the benchmarks yourself.</p>
-                        <a href="https://github.com/shivamd20/shvm-db-benchmark" class="btn secondary" target="_blank">
+                        <a href="https://github.com/shivamd20/shvm-db/tree/main/benchmarks" class="btn secondary"
+                            target="_blank">
                             View Benchmark Repo &rarr;
                         </a>
                     </div>
@@ -182,16 +195,20 @@ await client.send(new PutItemCommand({
                             handles the hard stuff.</p>
 
                         <h3>Consistency via Monotonicity</h3>
-                        <p>We don't use wall clocks for ordering. Every mutation is assigned a strict monotonic integer version by the Leader.
-                           Replicas apply updates in strict order, guaranteeing that time never moves backwards.</p>
+                        <p>We don't use wall clocks for ordering. Every mutation is assigned a strict monotonic integer
+                            version by the Leader.
+                            Replicas apply updates in strict order, guaranteeing that time never moves backwards.</p>
 
                         <h3>Backfill & Migration</h3>
-                        <p>Replica provisioning is handled by a state machine: <code>CREATED</code> &rarr; <code>BACKFILLING</code> &rarr; <code>CATCHING_UP</code> &rarr; <code>READABLE</code>.
-                           Only when a replica is fully caught up does it serve traffic.</p>
+                        <p>Replica provisioning is handled by a state machine: <code>CREATED</code> &rarr;
+                            <code>BACKFILLING</code> &rarr; <code>CATCHING_UP</code> &rarr; <code>READABLE</code>.
+                            Only when a replica is fully caught up does it serve traffic.
+                        </p>
 
                         <h3>Cursor Model</h3>
-                        <p>Replicas store a single cursor: <code>lastAppliedVersion</code>. This makes the system robust against crashes,
-                           duplicates, and reordering.</p>
+                        <p>Replicas store a single cursor: <code>lastAppliedVersion</code>. This makes the system robust
+                            against crashes,
+                            duplicates, and reordering.</p>
                     </div>
                     <div class="vision-image">
                         <pre><code class="language-javascript">// Conditional Write Example

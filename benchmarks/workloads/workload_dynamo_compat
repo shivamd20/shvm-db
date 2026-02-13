@@ -1,12 +1,35 @@
-recordcount=1000
-operationcount=1000
+# ============================================================
+# Workload: DynamoDB Compatibility Verification
+# ============================================================
+
 workload=site.ycsb.workloads.CoreWorkload
 
-readallfields=true
+# -----------------------------
+# Dataset size
+# -----------------------------
+recordcount=100
+operationcount=100
 
+# -----------------------------
+# Operation mix
+# Balanced mix to test all paths
+# -----------------------------
+readallfields=true
 readproportion=0.5
 updateproportion=0.5
-scanproportion=0
 insertproportion=0
+scanproportion=0
 
-requestdistribution=zipfian
+# -----------------------------
+# Access pattern
+# -----------------------------
+requestdistribution=uniform
+
+# -----------------------------
+# Connection
+# -----------------------------
+db=site.ycsb.db.DynamoDBClient
+dynamodb.endpoint=http://localhost:8787/api
+dynamodb.primaryKey=PK
+dynamodb.primaryKeyType=HASH
+dynamodb.awsCredentialsFile=fake-aws-credentials.properties
