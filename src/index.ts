@@ -7,6 +7,7 @@ import { validateItemAgainstSchema, ValidationError } from "./validation";
 import { MetadataService } from "./metadata-service";
 import { CreateTableInput, RoutingTable, ReplicationMessage, Role } from "./types";
 import { createLogger } from "./debug";
+import * as Sentry from "@sentry/cloudflare";
 
 export { PartitionDO, SubDO, TableRegistryDO };
 
@@ -16,7 +17,9 @@ export interface Env {
 	TABLE_REGISTRY_DO: DurableObjectNamespace<TableRegistryDO>;
 	TABLE_METADATA_CACHE: KVNamespace;
 	REPLICATION_QUEUE: Queue;
+	REPLICATION_QUEUE: Queue;
 	SHVM_DEBUG?: string;
+	SENTRY_DSN?: string;
 }
 
 // --- Hashing ---
@@ -31,71 +34,89 @@ function hashPartitionKey(pk: string, numPartitions: number): number {
 
 const NUM_PARTITIONS = 100;
 
-export default {
-	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		const url = new URL(request.url);
-		// Handle API requests
-		if (url.pathname.startsWith("/api") || request.headers.has("x-amz-target")) {
-			try {
-				return await handleDynamoRequest(request, env, ctx);
-			} catch (err: any) {
-				const log = createLogger(env);
-				log.error("router", `Error: ${err?.message}`, err?.stack);
-				if (err instanceof ValidationError) {
-					return new Response(JSON.stringify({ __type: "ValidationException", message: err.message }), {
-						status: 400,
+export default Sentry.withSentry(
+	(env: Env) => ({
+		dsn: env.SENTRY_DSN || "https://3cd4626e8b95c9d78fb1916783581b12@o4510880154779648.ingest.us.sentry.io/4510880156286976",
+		tracesSampleRate: 1.0,
+		enableLogs: true,
+		sendDefaultPii: true,
+	}),
+	{
+		async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+			const url = new URL(request.url);
+			if (url.pathname === "/debug/sentry") {
+				Sentry.captureMessage("User triggered test error", {
+					level: "info",
+					extra: {
+						action: "test_error_worker",
+					},
+				});
+				// Intentionally throw an error to test reporting
+				throw new Error("This is a test error for Sentry integration");
+			}
+
+			// Handle API requests
+			if (url.pathname.startsWith("/api") || request.headers.has("x-amz-target")) {
+				try {
+					return await handleDynamoRequest(request, env, ctx);
+				} catch (err: any) {
+					const log = createLogger(env);
+					log.error("router", `Error: ${err?.message}`, err?.stack);
+					if (err instanceof ValidationError) {
+						return new Response(JSON.stringify({ __type: "ValidationException", message: err.message }), {
+							status: 400,
+							headers: { "Content-Type": "application/x-amz-json-1.0" }
+						});
+					}
+					const type = err.message.includes("not found") ? "ResourceNotFoundException" : "InternalServerError";
+					return new Response(JSON.stringify({ __type: type, message: err.message }), {
+						status: type === "ResourceNotFoundException" ? 400 : 500,
 						headers: { "Content-Type": "application/x-amz-json-1.0" }
 					});
 				}
-				const type = err.message.includes("not found") ? "ResourceNotFoundException" : "InternalServerError";
-				return new Response(JSON.stringify({ __type: type, message: err.message }), {
-					status: type === "ResourceNotFoundException" ? 400 : 500,
-					headers: { "Content-Type": "application/x-amz-json-1.0" }
-				});
 			}
-		}
-		return new Response("Not Found", { status: 404 });
-	},
+			return new Response("Not Found", { status: 404 });
+		},
 
-	async queue(batch: MessageBatch<ReplicationMessage>, env: Env): Promise<void> {
-		const log = createLogger(env);
-		const promises: Promise<void>[] = [];
-		const routingCache = new Map<string, RoutingTable>();
+		async queue(batch: MessageBatch<any>, env: Env): Promise<void> {
+			const log = createLogger(env);
+			const promises: Promise<void>[] = [];
+			const routingCache = new Map<string, RoutingTable>();
 
-		for (const message of batch.messages) {
-			const msg = message.body;
-			const pId = msg.partitionId;
-			const tableName = msg.tableName || "default";
-			const pKey = `${tableName}::partition-${pId}`;
+			for (const message of batch.messages) {
+				const msg = message.body;
+				const pId = msg.partitionId;
+				const tableName = msg.tableName || "default";
+				const pKey = `${tableName}::partition-${pId}`;
 
-			log("queue", `replication type=${msg.type} table=${tableName} partition=${pId} sk=${msg.sk} v=${msg.version}`);
+				log("queue", `replication type=${msg.type} table=${tableName} partition=${pId} sk=${msg.sk} v=${msg.version}`);
 
-			// Replicate to standby
-			const standbyId = env.SUB_DO.idFromName(`${pKey}-standby`);
-			const standbyStub = env.SUB_DO.get(standbyId);
-			promises.push(standbyStub.init(Role.STANDBY).then(() => standbyStub.applyMutation(msg)));
+				// Replicate to standby
+				const standbyId = env.SUB_DO.idFromName(`${pKey}-standby`);
+				const standbyStub = env.SUB_DO.get(standbyId);
+				promises.push(standbyStub.init(Role.STANDBY).then(() => standbyStub.applyMutation(msg)));
 
-			// Get routing config for replicas
-			let routing = routingCache.get(pKey);
-			if (!routing) {
-				const pStub = env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey));
-				routing = await pStub.getRoutingConfig();
-				routingCache.set(pKey, routing);
+				// Get routing config for replicas
+				let routing = routingCache.get(pKey);
+				if (!routing) {
+					const pStub = env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey));
+					routing = await pStub.getRoutingConfig();
+					routingCache.set(pKey, routing);
+				}
+
+				const replicas = routing.replicas[pId] || [];
+				log("queue", `partition ${pKey} replicas=${replicas.length}`);
+
+				for (const rId of replicas) {
+					const rStub = env.SUB_DO.get(env.SUB_DO.idFromString(rId));
+					promises.push(rStub.applyMutation(msg));
+				}
 			}
 
-			const replicas = routing.replicas[pId] || [];
-			log("queue", `partition ${pKey} replicas=${replicas.length}`);
-
-			for (const rId of replicas) {
-				const rStub = env.SUB_DO.get(env.SUB_DO.idFromString(rId));
-				promises.push(rStub.applyMutation(msg));
-			}
-		}
-
-		await Promise.allSettled(promises);
-	},
-
-} satisfies ExportedHandler<Env, ReplicationMessage>;
+			await Promise.allSettled(promises);
+		},
+	} satisfies ExportedHandler<Env, ReplicationMessage>
+);
 
 // --- Routing ---
 const validRoutingCache = new Map<string, RoutingTable>();
@@ -122,12 +143,16 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	// ... Control Plane ...
 	if (op === "CreateTable") {
 		log("control", `CreateTable: ${body.TableName}`);
-		const res = await metadataService.createTable(body as CreateTableInput);
+		const res = await Sentry.startSpan({ name: "create_table" }, async () => {
+			return await metadataService.createTable(body as CreateTableInput);
+		});
 		return new Response(JSON.stringify(res), { headers: debugHeaders });
 	}
 	if (op === "DeleteTable") {
 		log("control", `DeleteTable: ${body.TableName}`);
-		const res = await metadataService.deleteTable(body.TableName);
+		const res = await Sentry.startSpan({ name: "delete_table" }, async () => {
+			return await metadataService.deleteTable(body.TableName);
+		});
 		return new Response(JSON.stringify(res), { headers: debugHeaders });
 	}
 	if (op === "ListTables") {
@@ -155,7 +180,9 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	const tableName = body.TableName;
 	if (!tableName) throw new ValidationError("TableName is required");
 
-	const metadata = await metadataService.getTableMetadata(tableName);
+	const metadata = await Sentry.startSpan({ name: "get_table_metadata" }, async () => {
+		return await metadataService.getTableMetadata(tableName);
+	});
 	const pkDef = metadata.KeySchema.find(k => k.KeyType === "HASH");
 	if (!pkDef) throw new Error("Table definition missing Partition Key");
 
@@ -166,7 +193,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	if (!pkRaw) throw new ValidationError("Partition Key value invalid");
 
 	// --- Partition Routing (table-scoped) ---
-	const partitionId = hashPartitionKey(pkRaw, NUM_PARTITIONS);
+	const partitionId = Sentry.startSpan({ name: "hash_partition_key" }, () => hashPartitionKey(pkRaw, NUM_PARTITIONS));
 	const pKey = `${tableName}::partition-${partitionId}`;
 
 	debugHeaders["X-SHIVAM-DB-PARTITION-ID-INTERNAL"] = String(partitionId);
@@ -177,7 +204,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 
 	if (op === "PutItem" || op === "DeleteItem" || op === "UpdateItem") {
 		const leaderStub = env.SUB_DO.get(env.SUB_DO.idFromName(`${pKey}-leader`));
-		await leaderStub.init(Role.LEADER);
+		await Sentry.startSpan({ name: "init_leader" }, () => leaderStub.init(Role.LEADER));
 
 		if (op === "PutItem") {
 			validateItemAgainstSchema(body.Item, metadata);
@@ -189,7 +216,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			debugHeaders["X-SHIVAM-DB-LEADER-DO"] = `${pKey}-leader`;
 
 			const doReachedTs = Date.now();
-			await leaderStub.putItem(doKey, body.Item, partitionId, tableName);
+			await Sentry.startSpan({ name: "do_put_item", op: "db.write" }, () => leaderStub.putItem(doKey, body.Item, partitionId, tableName));
 			debugHeaders["X-SHIVAM-DB-SUB-DO-REACHED-TS"] = String(doReachedTs);
 			debugHeaders["X-SHIVAM-DB-SUB-DO-LATENCY-MS"] = String(Date.now() - doReachedTs);
 		} else if (op === "DeleteItem") {
@@ -200,7 +227,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			debugHeaders["X-SHIVAM-DB-SK"] = skRaw;
 
 			const doReachedTs = Date.now();
-			await leaderStub.deleteItem(doKey, partitionId, tableName);
+			await Sentry.startSpan({ name: "do_delete_item", op: "db.write" }, () => leaderStub.deleteItem(doKey, partitionId, tableName));
 			debugHeaders["X-SHIVAM-DB-SUB-DO-REACHED-TS"] = String(doReachedTs);
 			debugHeaders["X-SHIVAM-DB-SUB-DO-LATENCY-MS"] = String(Date.now() - doReachedTs);
 		} else if (op === "UpdateItem") {
@@ -213,7 +240,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			const updates = body.AttributeUpdates || {};
 			const doReachedTs = Date.now();
 			// @ts-ignore - dynamic dispatch to DO
-			await leaderStub.updateItem(doKey, updates, partitionId, tableName);
+			await Sentry.startSpan({ name: "do_update_item", op: "db.write" }, () => leaderStub.updateItem(doKey, updates, partitionId, tableName));
 
 			debugHeaders["X-SHIVAM-DB-SUB-DO-REACHED-TS"] = String(doReachedTs);
 			debugHeaders["X-SHIVAM-DB-SUB-DO-LATENCY-MS"] = String(Date.now() - doReachedTs);
@@ -224,7 +251,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	if (op === "GetItem") {
 		if (!validRoutingCache.has(pKey)) {
 			const pStub = env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey));
-			const r = await pStub.getRoutingConfig();
+			const r = await Sentry.startSpan({ name: "get_routing_config" }, () => pStub.getRoutingConfig());
 			validRoutingCache.set(pKey, r);
 		}
 		const routing = validRoutingCache.get(pKey)!;
@@ -239,7 +266,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			// The Standby only gets data asynchronously via the replication queue.
 			const leaderId = `${pKey}-leader`;
 			rStub = env.SUB_DO.get(env.SUB_DO.idFromName(leaderId));
-			await rStub.init(Role.LEADER);
+			await Sentry.startSpan({ name: "init_leader_read" }, () => rStub.init(Role.LEADER));
 			readTarget = leaderId;
 			log("router", `GetItem: no replicas, reading from leader ${leaderId}`);
 		} else {
@@ -258,7 +285,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 		debugHeaders["X-SHIVAM-DB-READ-TARGET"] = readTarget;
 
 		const doReachedTs = Date.now();
-		const item = await rStub.getItem(doKey);
+		const item = await Sentry.startSpan({ name: "do_get_item", op: "db.read" }, () => rStub.getItem(doKey));
 		debugHeaders["X-SHIVAM-DB-SUB-DO-REACHED-TS"] = String(doReachedTs);
 		debugHeaders["X-SHIVAM-DB-SUB-DO-LATENCY-MS"] = String(Date.now() - doReachedTs);
 

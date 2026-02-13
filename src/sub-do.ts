@@ -6,6 +6,7 @@ import type { PartitionDO } from "./partition-do";
 import { ReplicationMessage, Role, ReplicaState, AttributeValueUpdate } from "./types";
 import { createDOLogger, Logger } from "./debug";
 import { SubDOQueries } from "./sql/queries";
+import * as Sentry from "@sentry/cloudflare";
 
 export interface Env {
     PARTITION_DO: DurableObjectNamespace<PartitionDO>;
@@ -41,34 +42,38 @@ export class SubDO extends DurableObject<Env> {
     }
 
     private initializeStorage() {
-        this.sql.exec(SubDOQueries.Schema.CREATE_METADATA);
-        this.sql.exec(SubDOQueries.Schema.CREATE_ITEMS);
-        this.sql.exec(SubDOQueries.Schema.CREATE_CURSORS);
+        return Sentry.startSpan({ name: "subdo_init_storage" }, () => {
+            this.sql.exec(SubDOQueries.Schema.CREATE_METADATA);
+            this.sql.exec(SubDOQueries.Schema.CREATE_ITEMS);
+            this.sql.exec(SubDOQueries.Schema.CREATE_CURSORS);
+        });
     }
 
     private loadState() {
-        // Load Role
-        const roleCursor = this.sql.exec(SubDOQueries.Metadata.GET, "role");
-        const roleRow = Array.from(roleCursor)[0] as any;
-        if (roleRow) {
-            this.role = roleRow.value as Role;
-        }
+        return Sentry.startSpan({ name: "subdo_load_state" }, () => {
+            // Load Role
+            const roleCursor = this.sql.exec(SubDOQueries.Metadata.GET, "role");
+            const roleRow = Array.from(roleCursor)[0] as any;
+            if (roleRow) {
+                this.role = roleRow.value as Role;
+            }
 
-        // Load Cursor
-        const cursorIter = this.sql.exec(SubDOQueries.Cursors.GET, "lastApplied");
-        const cursorRow = Array.from(cursorIter)[0] as any;
-        if (cursorRow) {
-            this.lastAppliedVersion = cursorRow.val as number;
-        }
+            // Load Cursor
+            const cursorIter = this.sql.exec(SubDOQueries.Cursors.GET, "lastApplied");
+            const cursorRow = Array.from(cursorIter)[0] as any;
+            if (cursorRow) {
+                this.lastAppliedVersion = cursorRow.val as number;
+            }
 
-        // Load Replica State
-        const stateIter = this.sql.exec(SubDOQueries.Metadata.GET, "replicaState");
-        const stateRow = Array.from(stateIter)[0] as any;
-        if (stateRow) {
-            this.replicaState = stateRow.value as ReplicaState;
-        }
+            // Load Replica State
+            const stateIter = this.sql.exec(SubDOQueries.Metadata.GET, "replicaState");
+            const stateRow = Array.from(stateIter)[0] as any;
+            if (stateRow) {
+                this.replicaState = stateRow.value as ReplicaState;
+            }
 
-        // Rebuild BF if needed (skip for now for speed)
+            // Rebuild BF if needed (skip for now for speed)
+        });
     }
 
     async init(role: Role) {
@@ -107,112 +112,120 @@ export class SubDO extends DurableObject<Env> {
     }
 
     async putItem(sk: string, value: unknown, partitionId: number, tableName: string = 'default'): Promise<void> {
-        if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
+        return Sentry.startSpan({ name: "subdo_put_item", op: "db.write" }, async () => {
+            if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
 
-        const version = this.getNextVersion();
-        this.log("SubDO", `[LEADER] putItem sk=${sk} v=${version} partition=${partitionId} table=${tableName}`);
+            const version = this.getNextVersion();
+            this.log("SubDO", `[LEADER] putItem sk=${sk} v=${version} partition=${partitionId} table=${tableName}`);
 
-        // 1. Log locally
-        this.applyToLocal(sk, version, value, 0);
+            // 1. Log locally
+            this.applyToLocal(sk, version, value, 0);
 
-        // 2. Publish
-        await this.env.REPLICATION_QUEUE.send({
-            type: 'PUT',
-            sk,
-            value,
-            version,
-            partitionId,
-            tableName,
-            replicationFactor: 0
+            // 2. Publish
+            await this.env.REPLICATION_QUEUE.send({
+                type: 'PUT',
+                sk,
+                value,
+                version,
+                partitionId,
+                tableName,
+                replicationFactor: 0
+            });
         });
     }
 
     async deleteItem(sk: string, partitionId: number, tableName: string = 'default'): Promise<void> {
-        if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
+        return Sentry.startSpan({ name: "subdo_delete_item", op: "db.write" }, async () => {
+            if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
 
-        const version = this.getNextVersion();
-        this.log("SubDO", `[LEADER] deleteItem sk=${sk} v=${version} partition=${partitionId} table=${tableName}`);
-        this.applyToLocal(sk, version, null, 1);
+            const version = this.getNextVersion();
+            this.log("SubDO", `[LEADER] deleteItem sk=${sk} v=${version} partition=${partitionId} table=${tableName}`);
+            this.applyToLocal(sk, version, null, 1);
 
-        await this.env.REPLICATION_QUEUE.send({
-            type: 'DELETE',
-            sk,
-            version,
-            partitionId,
-            tableName,
-            replicationFactor: 0
+            await this.env.REPLICATION_QUEUE.send({
+                type: 'DELETE',
+                sk,
+                version,
+                partitionId,
+                tableName,
+                replicationFactor: 0
+            });
         });
     }
 
     async updateItem(sk: string, updates: Record<string, AttributeValueUpdate>, partitionId: number, tableName: string = 'default'): Promise<void> {
-        if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
+        return Sentry.startSpan({ name: "subdo_update_item", op: "db.write" }, async () => {
+            if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
 
-        const version = this.getNextVersion();
-        this.log("SubDO", `[LEADER] updateItem sk=${sk} v=${version} partition=${partitionId} table=${tableName}`);
+            const version = this.getNextVersion();
+            this.log("SubDO", `[LEADER] updateItem sk=${sk} v=${version} partition=${partitionId} table=${tableName}`);
 
-        // 1. Read existing item (or empty if not exists/deleted)
-        let currentItem: Record<string, any> = {};
-        const cursor = this.sql.exec(SubDOQueries.Items.GET_LATEST, sk);
-        const row = Array.from(cursor)[0] as any;
+            // 1. Read existing item (or empty if not exists/deleted)
+            let currentItem: Record<string, any> = {};
+            const cursor = this.sql.exec(SubDOQueries.Items.GET_LATEST, sk);
+            const row = Array.from(cursor)[0] as any;
 
-        if (row && (row.deleted as number) === 0) {
-            try {
-                currentItem = JSON.parse(row.value as string);
-            } catch (e) {
-                this.log("SubDO", `Error parsing existing item for update sk=${sk}: ${e}`);
+            if (row && (row.deleted as number) === 0) {
+                try {
+                    currentItem = JSON.parse(row.value as string);
+                } catch (e) {
+                    this.log("SubDO", `Error parsing existing item for update sk=${sk}: ${e}`);
+                }
             }
-        }
 
-        // 2. Apply updates
-        for (const [key, update] of Object.entries(updates)) {
-            const action = update.Action || 'PUT';
-            if (action === 'PUT') {
-                currentItem[key] = update.Value;
-            } else if (action === 'DELETE') {
-                delete currentItem[key];
+            // 2. Apply updates
+            for (const [key, update] of Object.entries(updates)) {
+                const action = update.Action || 'PUT';
+                if (action === 'PUT') {
+                    currentItem[key] = update.Value;
+                } else if (action === 'DELETE') {
+                    delete currentItem[key];
+                }
+                // ADD action skipped for now - YCSB uses PUT
             }
-            // ADD action skipped for now - YCSB uses PUT
-        }
 
-        // 3. Write new version
-        this.applyToLocal(sk, version, currentItem, 0);
+            // 3. Write new version
+            this.applyToLocal(sk, version, currentItem, 0);
 
-        // 4. Publish
-        await this.env.REPLICATION_QUEUE.send({
-            type: 'PUT',
-            sk,
-            value: currentItem,
-            version,
-            partitionId,
-            tableName,
-            replicationFactor: 0
+            // 4. Publish
+            await this.env.REPLICATION_QUEUE.send({
+                type: 'PUT',
+                sk,
+                value: currentItem,
+                version,
+                partitionId,
+                tableName,
+                replicationFactor: 0
+            });
         });
     }
 
     // --- COMMON APPLY ---
 
     applyMutation(msg: ReplicationMessage) {
-        if (msg.version <= this.lastAppliedVersion) {
-            this.log("SubDO", `applyMutation SKIP (idempotent) version=${msg.version} lastApplied=${this.lastAppliedVersion}`);
-            return;
-        }
-
-        this.log("SubDO", `applyMutation type=${msg.type} sk=${msg.sk} v=${msg.version} role=${this.role} state=${this.replicaState}`);
-
-        if (msg.type === 'PUT') {
-            this.applyToLocal(msg.sk, msg.version, msg.value, 0);
-        } else if (msg.type === 'DELETE') {
-            this.applyToLocal(msg.sk, msg.version, null, 1);
-        }
-
-        this.persistCursor(msg.version);
-
-        if (this.role === Role.REPLICA && this.replicaState === ReplicaState.CATCHING_UP) {
-            if (this.lastAppliedVersion >= this.migrationTargetVersion) {
-                this.log("SubDO", `Promoting to READABLE (caught up to version ${this.migrationTargetVersion})`);
-                this.promoteToReadable();
+        return Sentry.startSpan({ name: "subdo_apply_mutation" }, () => {
+            if (msg.version <= this.lastAppliedVersion) {
+                this.log("SubDO", `applyMutation SKIP (idempotent) version=${msg.version} lastApplied=${this.lastAppliedVersion}`);
+                return;
             }
-        }
+
+            this.log("SubDO", `applyMutation type=${msg.type} sk=${msg.sk} v=${msg.version} role=${this.role} state=${this.replicaState}`);
+
+            if (msg.type === 'PUT') {
+                this.applyToLocal(msg.sk, msg.version, msg.value, 0);
+            } else if (msg.type === 'DELETE') {
+                this.applyToLocal(msg.sk, msg.version, null, 1);
+            }
+
+            this.persistCursor(msg.version);
+
+            if (this.role === Role.REPLICA && this.replicaState === ReplicaState.CATCHING_UP) {
+                if (this.lastAppliedVersion >= this.migrationTargetVersion) {
+                    this.log("SubDO", `Promoting to READABLE (caught up to version ${this.migrationTargetVersion})`);
+                    this.promoteToReadable();
+                }
+            }
+        });
     }
 
     private applyToLocal(sk: string, version: number, value: any, deleted: number) {
@@ -305,30 +318,32 @@ export class SubDO extends DurableObject<Env> {
     // --- READ ---
 
     async getItem(sk: string): Promise<unknown | null> {
-        this.log("SubDO", `getItem sk=${sk} role=${this.role} state=${this.replicaState}`);
+        return Sentry.startSpan({ name: "subdo_get_item", op: "db.read" }, async () => {
+            this.log("SubDO", `getItem sk=${sk} role=${this.role} state=${this.replicaState}`);
 
-        if (this.replicaState !== ReplicaState.READABLE && this.role !== Role.LEADER && this.role !== Role.STANDBY) {
-            throw new Error(`Replica not readable yet. State: ${this.replicaState}`);
-        }
+            if (this.replicaState !== ReplicaState.READABLE && this.role !== Role.LEADER && this.role !== Role.STANDBY) {
+                throw new Error(`Replica not readable yet. State: ${this.replicaState}`);
+            }
 
-        const cached = this.lru.get(sk);
-        if (cached !== undefined) {
-            this.log("SubDO", `getItem CACHE HIT sk=${sk}`);
-            return cached;
-        }
+            const cached = this.lru.get(sk);
+            if (cached !== undefined) {
+                this.log("SubDO", `getItem CACHE HIT sk=${sk}`);
+                return cached;
+            }
 
-        const cursor = this.sql.exec(SubDOQueries.Items.GET_LATEST, sk);
-        const row = Array.from(cursor)[0] as any;
+            const cursor = this.sql.exec(SubDOQueries.Items.GET_LATEST, sk);
+            const row = Array.from(cursor)[0] as any;
 
-        if (!row || (row.deleted as number) === 1) {
-            this.log("SubDO", `getItem NOT FOUND sk=${sk}`);
-            return null;
-        }
+            if (!row || (row.deleted as number) === 1) {
+                this.log("SubDO", `getItem NOT FOUND sk=${sk}`);
+                return null;
+            }
 
-        const val = JSON.parse(row.value as string);
-        this.lru.put(sk, val);
-        this.log("SubDO", `getItem FOUND sk=${sk}`);
-        return val;
+            const val = JSON.parse(row.value as string);
+            this.lru.put(sk, val);
+            this.log("SubDO", `getItem FOUND sk=${sk}`);
+            return val;
+        });
     }
 
     /** Returns internal debug state for testing/observability */
