@@ -34,6 +34,25 @@ export interface CreateTableInput {
     ProvisionedThroughput?: ProvisionedThroughput;
 }
 
+export interface AttributeValue {
+    S?: string;
+    N?: string;
+    B?: string;
+    [key: string]: any;
+}
+
+export interface AttributeValueUpdate {
+    Value: AttributeValue;
+    Action?: "PUT" | "DELETE" | "ADD";
+}
+
+export interface UpdateItemInput {
+    TableName: string;
+    Key: Record<string, AttributeValue>;
+    AttributeUpdates: Record<string, AttributeValueUpdate>;
+    ReturnValues?: string;
+}
+
 export enum Role {
     LEADER = 'LEADER',
     STANDBY = 'STANDBY',

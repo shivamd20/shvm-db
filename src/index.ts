@@ -107,7 +107,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	if (!target) return new Response("Missing x-amz-target header", { status: 400 });
 
 	const body = await request.json() as any;
-	const op = target.split(".").pop();
+	const op = target.split(".").pop() || "unknown";
 	const metadataService = new MetadataService(env);
 
 	log("router", `op=${op} table=${body.TableName || 'N/A'}`);
@@ -184,29 +184,39 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
 			const skVal = skDef ? body.Item[skDef.AttributeName] : undefined;
 			const skRaw = getRaw(skVal) || "default";
+			const doKey = `${pkRaw}#${skRaw}`;
 			debugHeaders["X-SHIVAM-DB-SK"] = skRaw;
 			debugHeaders["X-SHIVAM-DB-LEADER-DO"] = `${pKey}-leader`;
 
 			const doReachedTs = Date.now();
-			await leaderStub.putItem(skRaw, body.Item, partitionId, tableName);
+			await leaderStub.putItem(doKey, body.Item, partitionId, tableName);
 			debugHeaders["X-SHIVAM-DB-SUB-DO-REACHED-TS"] = String(doReachedTs);
 			debugHeaders["X-SHIVAM-DB-SUB-DO-LATENCY-MS"] = String(Date.now() - doReachedTs);
 		} else if (op === "DeleteItem") {
 			const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
 			const skVal = skDef ? body.Key[skDef.AttributeName] : undefined;
 			const skRaw = getRaw(skVal) || "default";
+			const doKey = `${pkRaw}#${skRaw}`;
 			debugHeaders["X-SHIVAM-DB-SK"] = skRaw;
 
 			const doReachedTs = Date.now();
-			await leaderStub.deleteItem(skRaw, partitionId, tableName);
+			await leaderStub.deleteItem(doKey, partitionId, tableName);
 			debugHeaders["X-SHIVAM-DB-SUB-DO-REACHED-TS"] = String(doReachedTs);
 			debugHeaders["X-SHIVAM-DB-SUB-DO-LATENCY-MS"] = String(Date.now() - doReachedTs);
-		} else {
-			// UpdateItem - not implemented
-			return new Response(JSON.stringify({ __type: "NotImplemented", message: "UpdateItem not supported yet" }), {
-				status: 501,
-				headers: debugHeaders
-			});
+		} else if (op === "UpdateItem") {
+			const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
+			const skVal = skDef ? body.Key[skDef.AttributeName] : undefined;
+			const skRaw = getRaw(skVal) || "default";
+			const doKey = `${pkRaw}#${skRaw}`;
+			debugHeaders["X-SHIVAM-DB-SK"] = skRaw;
+
+			const updates = body.AttributeUpdates || {};
+			const doReachedTs = Date.now();
+			// @ts-ignore - dynamic dispatch to DO
+			await leaderStub.updateItem(doKey, updates, partitionId, tableName);
+
+			debugHeaders["X-SHIVAM-DB-SUB-DO-REACHED-TS"] = String(doReachedTs);
+			debugHeaders["X-SHIVAM-DB-SUB-DO-LATENCY-MS"] = String(Date.now() - doReachedTs);
 		}
 		return new Response(JSON.stringify({}), { headers: debugHeaders });
 	}
@@ -222,7 +232,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 		const replicas = routing.replicas[partitionId] || [];
 		let readTarget: string;
 
-		let rStub: DurableObjectStub;
+		let rStub: DurableObjectStub<SubDO>;
 		if (replicas.length === 0) {
 			// No read replicas provisioned — read from the Leader directly.
 			// The Leader always has the latest data (writes locally before publishing to queue).
@@ -242,12 +252,13 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 		const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
 		const skVal = skDef ? body.Key[skDef.AttributeName] : undefined;
 		const skRaw = getRaw(skVal) || "default";
+		const doKey = `${pkRaw}#${skRaw}`;
 
 		debugHeaders["X-SHIVAM-DB-SK"] = skRaw;
 		debugHeaders["X-SHIVAM-DB-READ-TARGET"] = readTarget;
 
 		const doReachedTs = Date.now();
-		const item = await rStub.getItem(skRaw);
+		const item = await rStub.getItem(doKey);
 		debugHeaders["X-SHIVAM-DB-SUB-DO-REACHED-TS"] = String(doReachedTs);
 		debugHeaders["X-SHIVAM-DB-SUB-DO-LATENCY-MS"] = String(Date.now() - doReachedTs);
 

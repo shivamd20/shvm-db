@@ -1,0 +1,29 @@
+# shvm-db Benchmark
+# Workload: Write Only (Insert Heavy)
+#   100% inserts to stress-test the write path
+#   Tests: PutItem → PartitionDO → SubDO → SQLite INSERT OR REPLACE
+
+recordcount=10000
+operationcount=50000
+workload=site.ycsb.workloads.CoreWorkload
+
+readallfields=true
+
+readproportion=0
+updateproportion=0
+scanproportion=0
+insertproportion=1
+
+requestdistribution=uniform
+
+# shvm-db connection
+db=site.ycsb.db.DynamoDBClient
+dynamodb.endpoint=http://localhost:8787
+# shvmdb.table is auto-generated for isolation
+
+# Thread count
+threadcount=4
+
+# Measurement type
+measurementtype=hdrhistogram
+hdrhistogram.percentiles=50,90,95,99,99.9

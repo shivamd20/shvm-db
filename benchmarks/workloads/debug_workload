@@ -1,0 +1,16 @@
+workload=site.ycsb.workloads.CoreWorkload
+recordcount=100
+operationcount=100
+readallfields=true
+readproportion=0.70
+updateproportion=0.30
+insertproportion=0
+scanproportion=0
+requestdistribution=zipfian
+db=site.ycsb.db.DynamoDBClient
+dynamodb.endpoint=http://localhost:8787
+shvmdb.table=debugtable_v2
+shvmdb.debug=true
+threadcount=16
+measurementtype=hdrhistogram
+hdrhistogram.percentiles=50,90,95,99,99.9,99.99

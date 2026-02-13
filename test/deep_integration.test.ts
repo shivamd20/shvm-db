@@ -556,18 +556,30 @@ describe("9. Unsupported Operations", () => {
         expect(res.status).toBe(501);
     });
 
-    it("UpdateItem should return 501", async () => {
+    it("UpdateItem should return 200 and update item", async () => {
         const tableName = TestClient.uniqueTableName("UnsupUpdate");
         await client.createTable(tableName, { hashKey: "PK", rangeKey: "SK" });
 
+        // Put initial item
+        await client.dynamoRequest("DynamoDB_20120810.PutItem", {
+            TableName: tableName,
+            Item: { PK: { S: "test" }, SK: { S: "test" }, val: { S: "old" } }
+        });
+
+        // Update
         const res = await client.dynamoRequest("DynamoDB_20120810.UpdateItem", {
             TableName: tableName,
             Key: { PK: { S: "test" }, SK: { S: "test" } },
-            UpdateExpression: "SET #v = :v",
-            ExpressionAttributeNames: { "#v": "val" },
-            ExpressionAttributeValues: { ":v": { S: "new" } }
+            AttributeUpdates: {
+                val: { Value: { S: "new" }, Action: "PUT" }
+            }
         });
-        expect(res.status).toBe(501);
+        expect(res.status).toBe(200);
+
+        // Verify update
+        const getRes = await client.getItem(tableName, { PK: { S: "test" }, SK: { S: "test" } });
+        const body = await getRes.json() as any;
+        expect(body.Item.val.S).toBe("new");
     });
 
     it("BatchWriteItem should return 501", async () => {

@@ -9,7 +9,9 @@
 		"start": "wrangler dev",
 		"test": "vitest run",
 		"test:local": "vitest run",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types",
+		"benchmark:setup": "chmod +x benchmarks/*.sh && chmod +x benchmarks/ycsb-dist/bin/ycsb.sh",
+		"benchmark:compat": "./benchmarks/run_dynamo_compat.sh"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20240208.0",

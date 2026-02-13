@@ -1,0 +1,30 @@
+# shvm-db Benchmark
+# Workload B: Read Heavy
+#   Read/update ratio: 95/5
+#   No scans (shvm-db MVP does not support scan/query)
+#   Request distribution: zipfian
+
+recordcount=10000
+operationcount=50000
+workload=site.ycsb.workloads.CoreWorkload
+
+readallfields=true
+
+readproportion=0.95
+updateproportion=0.05
+scanproportion=0
+insertproportion=0
+
+requestdistribution=zipfian
+
+# shvm-db connection
+db=site.ycsb.db.DynamoDBClient
+dynamodb.endpoint=http://localhost:8787
+# shvmdb.table is auto-generated for isolation
+
+# Thread count
+threadcount=4
+
+# Measurement type
+measurementtype=hdrhistogram
+hdrhistogram.percentiles=50,90,95,99,99.9

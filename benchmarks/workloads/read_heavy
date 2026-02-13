@@ -1,0 +1,50 @@
+# ============================================================
+# shvm-db Benchmark
+# Workload: Read Heavy (DynamoDB-like)
+#
+# - 95% reads, 5% updates
+# - NO inserts during transaction phase
+# - Assumes data already loaded
+# - Zipfian access pattern (hot keys)
+# ============================================================
+
+workload=site.ycsb.workloads.CoreWorkload
+
+# -----------------------------
+# Dataset size (must match load)
+# -----------------------------
+recordcount=10000
+operationcount=50000
+
+# -----------------------------
+# Operation mix
+# -----------------------------
+readallfields=true
+
+readproportion=0.95
+updateproportion=0.05
+insertproportion=0
+scanproportion=0
+
+# -----------------------------
+# Access pattern
+# -----------------------------
+requestdistribution=zipfian
+
+# -----------------------------
+# shvm-db connection
+# -----------------------------
+db=site.ycsb.db.DynamoDBClient
+dynamodb.endpoint=http://localhost:8787
+# shvmdb.table is auto-generated for isolation
+
+# -----------------------------
+# Concurrency
+# -----------------------------
+threadcount=4
+
+# -----------------------------
+# Measurements
+# -----------------------------
+measurementtype=hdrhistogram
+hdrhistogram.percentiles=50,90,95,99,99.9

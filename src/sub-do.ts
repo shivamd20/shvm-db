@@ -3,7 +3,7 @@ import { DurableObject } from "cloudflare:workers";
 import { LRUCache, BloomFilter } from "./cache";
 import { BLOOM_FILTER_SIZE, LRU_CACHE_CAPACITY } from "./constants";
 import type { PartitionDO } from "./partition-do";
-import { ReplicationMessage, Role, ReplicaState } from "./types";
+import { ReplicationMessage, Role, ReplicaState, AttributeValueUpdate } from "./types";
 import { createDOLogger, Logger } from "./debug";
 
 export interface Env {
@@ -150,6 +150,51 @@ export class SubDO extends DurableObject<Env> {
         await this.env.REPLICATION_QUEUE.send({
             type: 'DELETE',
             sk,
+            version,
+            partitionId,
+            tableName,
+            replicationFactor: 0
+        });
+    }
+
+    async updateItem(sk: string, updates: Record<string, AttributeValueUpdate>, partitionId: number, tableName: string = 'default'): Promise<void> {
+        if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
+
+        const version = this.getNextVersion();
+        this.log("SubDO", `[LEADER] updateItem sk=${sk} v=${version} partition=${partitionId} table=${tableName}`);
+
+        // 1. Read existing item (or empty if not exists/deleted)
+        let currentItem: Record<string, any> = {};
+        const cursor = this.sql.exec(`SELECT value, deleted FROM items_v2 WHERE sk = ? ORDER BY version DESC LIMIT 1`, sk);
+        const row = Array.from(cursor)[0] as any;
+
+        if (row && (row.deleted as number) === 0) {
+            try {
+                currentItem = JSON.parse(row.value as string);
+            } catch (e) {
+                this.log("SubDO", `Error parsing existing item for update sk=${sk}: ${e}`);
+            }
+        }
+
+        // 2. Apply updates
+        for (const [key, update] of Object.entries(updates)) {
+            const action = update.Action || 'PUT';
+            if (action === 'PUT') {
+                currentItem[key] = update.Value;
+            } else if (action === 'DELETE') {
+                delete currentItem[key];
+            }
+            // ADD action skipped for now - YCSB uses PUT
+        }
+
+        // 3. Write new version
+        this.applyToLocal(sk, version, currentItem, 0);
+
+        // 4. Publish
+        await this.env.REPLICATION_QUEUE.send({
+            type: 'PUT',
+            sk,
+            value: currentItem,
             version,
             partitionId,
             tableName,

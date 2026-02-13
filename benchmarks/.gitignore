@@ -1,0 +1,5 @@
+results/
+*.log
+*.txt
+.DS_Store
+ycsb-dist
