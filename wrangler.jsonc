@@ -86,7 +86,14 @@
 		"SHVM_DEBUG": "false"
 	},
 	"observability": {
-		"enabled": true
+		"enabled": true,
+		"logs": {
+			"enabled": true,
+			"invocation_logs": true
+		},
+		"traces": {
+			"enabled": true
+		}
 	},
 	"compatibility_flags": [
 		"nodejs_compat"
