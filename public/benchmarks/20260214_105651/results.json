@@ -1,0 +1,1720 @@
+{
+  "id": "20260214_105651",
+  "timestamp": "20260214_105651",
+  "results": [
+    {
+      "variant": "Hot Partition Stress",
+      "metrics": {
+        "2026-02-14 11:01:44:213 10 sec: 85 operations; 8.5 current ops/sec; est completion in 58 minutes [READ: Count=29": {
+          "Max=3467263": "Min=111296"
+        },
+        "2026-02-14 11:01:54:208 20 sec: 197 operations; 11.2 current ops/sec; est completion in 50 minutes [READ: Count=43": {
+          "Max=2418687": "Min=113728"
+        },
+        "2026-02-14 11:02:04:212 30 sec: 320 operations; 12.3 current ops/sec; est completion in 46 minutes [READ: Count=53": {
+          "Max=2140159": "Min=101312"
+        },
+        "2026-02-14 11:02:14:208 40 sec: 455 operations; 13.51 current ops/sec; est completion in 43 minutes [READ: Count=49": {
+          "Max=3104767": "Min=100480"
+        },
+        "2026-02-14 11:02:24:212 50 sec: 602 operations; 14.69 current ops/sec; est completion in 40 minutes [READ: Count=63": {
+          "Max=3166207": "Min=99584"
+        },
+        "2026-02-14 11:02:34:217 60 sec: 737 operations; 13.49 current ops/sec; est completion in 39 minutes [READ: Count=56": {
+          "Max=2555903": "Min=105536"
+        },
+        "2026-02-14 11:02:44:211 70 sec: 910 operations; 17.31 current ops/sec; est completion in 37 minutes [READ: Count=80": {
+          "Max=2371583": "Min=96960"
+        },
+        "2026-02-14 11:02:54:217 80 sec: 1096 operations; 18.59 current ops/sec; est completion in 35 minutes [READ: Count=81": {
+          "Max=1524735": "Min=88832"
+        },
+        "2026-02-14 11:03:04:216 90 sec: 1310 operations; 21.4 current ops/sec; est completion in 32 minutes [READ: Count=104": {
+          "Max=1667071": "Min=93888"
+        },
+        "2026-02-14 11:03:14:217 100 sec: 1484 operations; 17.4 current ops/sec; est completion in 32 minutes [READ: Count=69": {
+          "Max=2533375": "Min=91840"
+        },
+        "2026-02-14 11:03:24:216 110 sec: 1583 operations; 9.9 current ops/sec; est completion in 32 minutes [READ: Count=36": {
+          "Max=1715199": "Min=94656"
+        },
+        "2026-02-14 11:03:34:217 120 sec: 1644 operations; 6.1 current ops/sec; est completion in 34 minutes [READ: Count=29": {
+          "Max=1100799": "Min=96384"
+        },
+        "2026-02-14 11:03:44:210 130 sec: 1804 operations; 16.01 current ops/sec; est completion in 33 minutes [READ: Count=61": {
+          "Max=33325055": "Min=94912"
+        },
+        "2026-02-14 11:03:54:210 140 sec: 2013 operations; 20.9 current ops/sec; est completion in 32 minutes [READ: Count=75": {
+          "Max=5128191": "Min=86144"
+        },
+        "2026-02-14 11:04:04:208 150 sec: 2267 operations; 25.41 current ops/sec; est completion in 30 minutes [READ: Count=96": {
+          "Max=1767423": "Min=93504"
+        },
+        "2026-02-14 11:04:14:210 160 sec: 2513 operations; 24.6 current ops/sec; est completion in 29 minutes [READ: Count=98": {
+          "Max=1526783": "Min=97152"
+        },
+        "2026-02-14 11:04:24:208 170 sec: 2743 operations; 23 current ops/sec; est completion in 28 minutes [READ: Count=93": {
+          "Max=1826815": "Min=85888"
+        },
+        "2026-02-14 11:04:34:215 180 sec: 2987 operations; 24.38 current ops/sec; est completion in 27 minutes [READ: Count=95": {
+          "Max=1753087": "Min=89600"
+        },
+        "2026-02-14 11:04:44:217 190 sec: 3214 operations; 22.7 current ops/sec; est completion in 26 minutes [READ: Count=81": {
+          "Max=2772991": "Min=91456"
+        },
+        "2026-02-14 11:04:54:211 200 sec: 3432 operations; 21.81 current ops/sec; est completion in 25 minutes [READ: Count=61": {
+          "Max=1461247": "Min=95936"
+        },
+        "2026-02-14 11:05:04:216 210 sec: 3658 operations; 22.59 current ops/sec; est completion in 25 minutes [READ: Count=94": {
+          "Max=2363391": "Min=93120"
+        },
+        "2026-02-14 11:05:14:217 220 sec: 3876 operations; 21.8 current ops/sec; est completion in 24 minutes [READ: Count=101": {
+          "Max=4382719": "Min=90240"
+        },
+        "2026-02-14 11:05:24:215 230 sec: 4026 operations; 15 current ops/sec; est completion in 24 minutes [READ: Count=60": {
+          "Max=1852415": "Min=96576"
+        },
+        "2026-02-14 11:05:34:217 240 sec: 4123 operations; 9.7 current ops/sec; est completion in 25 minutes [READ: Count=40": {
+          "Max=2091007": "Min=86208"
+        },
+        "2026-02-14 11:05:44:214 250 sec: 4181 operations; 5.8 current ops/sec; est completion in 25 minutes [READ: Count=27": {
+          "Max=1572863": "Min=107712"
+        },
+        "2026-02-14 11:05:54:215 260 sec: 4229 operations; 4.8 current ops/sec; est completion in 26 minutes [READ: Count=21": {
+          "Max=26591231": "Min=97472"
+        },
+        "2026-02-14 11:06:04:210 270 sec: 4486 operations; 25.71 current ops/sec; est completion in 25 minutes [READ: Count=109": {
+          "Max=44695551": "Min=97152"
+        },
+        "2026-02-14 11:06:14:211 280 sec: 4725 operations; 23.9 current ops/sec; est completion in 24 minutes [READ: Count=91": {
+          "Max=2252799": "Min=94400"
+        },
+        "2026-02-14 11:06:24:217 290 sec: 4985 operations; 25.98 current ops/sec; est completion in 24 minutes [READ: Count=118": {
+          "Max=2328575": "Min=93312"
+        },
+        "2026-02-14 11:06:34:212 300 sec: 5244 operations; 25.91 current ops/sec; est completion in 23 minutes [READ: Count=100": {
+          "Max=2840575": "Min=94912"
+        },
+        "2026-02-14 11:06:44:207 310 sec: 5478 operations; 23.41 current ops/sec; est completion in 23 minutes [READ: Count=103": {
+          "Max=2443263": "Min=96960"
+        },
+        "2026-02-14 11:06:54:217 320 sec: 5735 operations; 25.68 current ops/sec; est completion in 22 minutes [READ: Count=103": {
+          "Max=1942527": "Min=92544"
+        },
+        "2026-02-14 11:07:04:210 330 sec: 5995 operations; 26.02 current ops/sec; est completion in 22 minutes [READ: Count=102": {
+          "Max=1742847": "Min=92672"
+        },
+        "2026-02-14 11:07:14:217 340 sec: 6249 operations; 25.38 current ops/sec; est completion in 21 minutes [READ: Count=94": {
+          "Max=1761279": "Min=95744"
+        },
+        "2026-02-14 11:07:24:215 350 sec: 6511 operations; 26.2 current ops/sec; est completion in 21 minutes [READ: Count=102": {
+          "Max=1332223": "Min=95168"
+        },
+        "2026-02-14 11:07:34:207 360 sec: 6750 operations; 23.92 current ops/sec; est completion in 20 minutes [READ: Count=94": {
+          "Max=1360895": "Min=92864"
+        },
+        "2026-02-14 11:07:44:214 370 sec: 6941 operations; 19.09 current ops/sec; est completion in 20 minutes [READ: Count=73": {
+          "Max=1504255": "Min=97792"
+        },
+        "2026-02-14 11:07:54:209 380 sec: 7096 operations; 15.51 current ops/sec; est completion in 20 minutes [READ: Count=59": {
+          "Max=1996799": "Min=92992"
+        },
+        "2026-02-14 11:08:04:216 390 sec: 7227 operations; 13.09 current ops/sec; est completion in 20 minutes [READ: Count=51": {
+          "Max=5320703": "Min=92032"
+        },
+        "2026-02-14 11:08:14:216 400 sec: 7436 operations; 20.9 current ops/sec; est completion in 20 minutes [READ: Count=96": {
+          "Max=2199551": "Min=96128"
+        },
+        "2026-02-14 11:08:24:213 410 sec: 7661 operations; 22.5 current ops/sec; est completion in 19 minutes [READ: Count=85": {
+          "Max=1618943": "Min=92352"
+        },
+        "2026-02-14 11:08:34:215 420 sec: 7818 operations; 15.7 current ops/sec; est completion in 19 minutes [READ: Count=63": {
+          "Max=2019327": "Min=98112"
+        },
+        "2026-02-14 11:08:44:211 430 sec: 7936 operations; 11.8 current ops/sec; est completion in 19 minutes [READ: Count=51": {
+          "Max=2695167": "Min=93440"
+        },
+        "2026-02-14 11:08:54:209 440 sec: 8014 operations; 7.8 current ops/sec; est completion in 20 minutes [READ: Count=32": {
+          "Max=2260991": "Min=91520"
+        },
+        "2026-02-14 11:09:04:212 450 sec: 8086 operations; 7.2 current ops/sec; est completion in 20 minutes [READ: Count=34": {
+          "Max=1733631": "Min=106880"
+        },
+        "2026-02-14 11:09:14:216 460 sec: 8205 operations; 11.9 current ops/sec; est completion in 20 minutes [READ: Count=51": {
+          "Max=1708031": "Min=96832"
+        },
+        "2026-02-14 11:09:24:215 470 sec: 8416 operations; 21.1 current ops/sec; est completion in 20 minutes [READ: Count=80": {
+          "Max=3125247": "Min=92096"
+        },
+        "2026-02-14 11:09:34:207 479 sec: 8650 operations; 23.42 current ops/sec; est completion in 19 minutes [READ: Count=103": {
+          "Max=2994175": "Min=88832"
+        },
+        "2026-02-14 11:09:44:216 490 sec: 8878 operations; 22.78 current ops/sec; est completion in 19 minutes [READ: Count=80": {
+          "Max=2930687": "Min=85824"
+        },
+        "2026-02-14 11:09:54:213 500 sec: 9107 operations; 22.91 current ops/sec; est completion in 19 minutes [READ: Count=93": {
+          "Max=1970175": "Min=94208"
+        },
+        "2026-02-14 11:10:04:210 510 sec: 9331 operations; 22.4 current ops/sec; est completion in 18 minutes [READ: Count=88": {
+          "Max=1740799": "Min=93632"
+        },
+        "2026-02-14 11:10:14:207 520 sec: 9578 operations; 24.71 current ops/sec; est completion in 18 minutes [READ: Count=92": {
+          "Max=1547263": "Min=90496"
+        },
+        "2026-02-14 11:10:24:212 530 sec: 9833 operations; 25.49 current ops/sec; est completion in 18 minutes [READ: Count=113": {
+          "Max=1178623": "Min=95936"
+        },
+        "2026-02-14 11:10:34:209 540 sec: 10093 operations; 26.01 current ops/sec; est completion in 17 minutes [READ: Count=105": {
+          "Max=1439743": "Min=92032"
+        },
+        "2026-02-14 11:10:44:210 550 sec: 10339 operations; 24.6 current ops/sec; est completion in 17 minutes [READ: Count=104": {
+          "Max=1372159": "Min=87232"
+        },
+        "2026-02-14 11:10:54:212 560 sec: 10592 operations; 25.29 current ops/sec; est completion in 17 minutes [READ: Count=107": {
+          "Max=931327": "Min=89216"
+        },
+        "2026-02-14 11:11:04:208 570 sec: 10849 operations; 25.71 current ops/sec; est completion in 16 minutes [READ: Count=101": {
+          "Max=1097727": "Min=93696"
+        },
+        "2026-02-14 11:11:14:215 580 sec: 11109 operations; 25.98 current ops/sec; est completion in 16 minutes [READ: Count=112": {
+          "Max=1934335": "Min=96896"
+        },
+        "2026-02-14 11:11:24:209 590 sec: 11366 operations; 25.72 current ops/sec; est completion in 16 minutes [READ: Count=100": {
+          "Max=1670143": "Min=89408"
+        },
+        "2026-02-14 11:11:34:215 600 sec: 11637 operations; 27.08 current ops/sec; est completion in 15 minutes [READ: Count=109": {
+          "Max=1047551": "Min=92800"
+        },
+        "2026-02-14 11:11:44:209 610 sec: 11900 operations; 26.32 current ops/sec; est completion in 15 minutes [READ: Count=108": {
+          "Max=752639": "Min=91072"
+        },
+        "2026-02-14 11:11:54:212 620 sec: 12159 operations; 25.89 current ops/sec; est completion in 15 minutes [READ: Count=106": {
+          "Max=786943": "Min=90752"
+        },
+        "2026-02-14 11:12:04:208 630 sec: 12429 operations; 27.01 current ops/sec; est completion in 14 minutes [READ: Count=107": {
+          "Max=760319": "Min=91328"
+        },
+        "2026-02-14 11:12:14:206 639 sec: 12690 operations; 26.11 current ops/sec; est completion in 14 minutes [READ: Count=110": {
+          "Max=1364991": "Min=89088"
+        },
+        "2026-02-14 11:12:24:210 650 sec: 12964 operations; 27.39 current ops/sec; est completion in 14 minutes [READ: Count=112": {
+          "Max=520703": "Min=93120"
+        },
+        "2026-02-14 11:12:34:215 660 sec: 13223 operations; 25.89 current ops/sec; est completion in 13 minutes [READ: Count=105": {
+          "Max=813055": "Min=88768"
+        },
+        "2026-02-14 11:12:44:215 670 sec: 13493 operations; 27 current ops/sec; est completion in 13 minutes [READ: Count=97": {
+          "Max=690175": "Min=90560"
+        },
+        "2026-02-14 11:12:54:209 680 sec: 13766 operations; 27.32 current ops/sec; est completion in 13 minutes [READ: Count=126": {
+          "Max=548351": "Min=91392"
+        },
+        "2026-02-14 11:13:04:210 690 sec: 14037 operations; 27.09 current ops/sec; est completion in 13 minutes [READ: Count=111": {
+          "Max=897023": "Min=94016"
+        },
+        "2026-02-14 11:13:14:208 700 sec: 14286 operations; 24.9 current ops/sec; est completion in 12 minutes [READ: Count=113": {
+          "Max=1435647": "Min=92736"
+        },
+        "2026-02-14 11:13:24:211 710 sec: 14535 operations; 24.89 current ops/sec; est completion in 12 minutes [READ: Count=88": {
+          "Max=1393663": "Min=93376"
+        },
+        "2026-02-14 11:13:34:214 720 sec: 14800 operations; 26.49 current ops/sec; est completion in 12 minutes [READ: Count=109": {
+          "Max=1883135": "Min=88960"
+        },
+        "2026-02-14 11:13:44:215 730 sec: 15070 operations; 26.99 current ops/sec; est completion in 12 minutes [READ: Count=103": {
+          "Max=1077247": "Min=90688"
+        },
+        "2026-02-14 11:13:54:208 740 sec: 15313 operations; 24.32 current ops/sec; est completion in 11 minutes [READ: Count=98": {
+          "Max=1160191": "Min=87104"
+        },
+        "2026-02-14 11:14:04:213 750 sec: 15571 operations; 25.78 current ops/sec; est completion in 11 minutes [READ: Count=108": {
+          "Max=1075199": "Min=90496"
+        },
+        "2026-02-14 11:14:14:209 760 sec: 15824 operations; 25.31 current ops/sec; est completion in 11 minutes [READ: Count=88": {
+          "Max=1127423": "Min=97792"
+        },
+        "2026-02-14 11:14:24:212 770 sec: 16071 operations; 24.69 current ops/sec; est completion in 11 minutes [READ: Count=89": {
+          "Max=1127423": "Min=90496"
+        },
+        "2026-02-14 11:14:34:209 780 sec: 16335 operations; 26.41 current ops/sec; est completion in 10 minutes [READ: Count=101": {
+          "Max=2191359": "Min=89344"
+        },
+        "2026-02-14 11:14:44:216 790 sec: 16596 operations; 26.08 current ops/sec; est completion in 10 minutes [READ: Count=114": {
+          "Max=1791999": "Min=92160"
+        },
+        "2026-02-14 11:14:54:210 800 sec: 16843 operations; 24.71 current ops/sec; est completion in 10 minutes [READ: Count=87": {
+          "Max=1072127": "Min=92864"
+        },
+        "2026-02-14 11:15:04:209 810 sec: 17084 operations; 24.1 current ops/sec; est completion in 10 minutes [READ: Count=111": {
+          "Max=1328127": "Min=88960"
+        },
+        "2026-02-14 11:15:14:209 820 sec: 17335 operations; 25.1 current ops/sec; est completion in 10 minutes [READ: Count=103": {
+          "Max=996863": "Min=93248"
+        },
+        "2026-02-14 11:15:24:208 830 sec: 17595 operations; 26 current ops/sec; est completion in 9 minutes [READ: Count=114": {
+          "Max=1053695": "Min=88960"
+        },
+        "2026-02-14 11:15:34:212 840 sec: 17863 operations; 26.79 current ops/sec; est completion in 9 minutes [READ: Count=118": {
+          "Max=1887231": "Min=92096"
+        },
+        "2026-02-14 11:15:44:215 850 sec: 18121 operations; 25.79 current ops/sec; est completion in 9 minutes [READ: Count=114": {
+          "Max=1636351": "Min=91456"
+        },
+        "2026-02-14 11:15:54:215 860 sec: 18388 operations; 26.7 current ops/sec; est completion in 9 minutes [READ: Count=113": {
+          "Max=1432575": "Min=89728"
+        },
+        "2026-02-14 11:16:04:216 870 sec: 18653 operations; 26.5 current ops/sec; est completion in 8 minutes [READ: Count=126": {
+          "Max=1397759": "Min=91712"
+        },
+        "2026-02-14 11:16:14:212 880 sec: 18912 operations; 25.91 current ops/sec; est completion in 8 minutes [READ: Count=108": {
+          "Max=987647": "Min=85440"
+        },
+        "2026-02-14 11:16:24:206 889 sec: 19153 operations; 24.11 current ops/sec; est completion in 8 minutes [READ: Count=102": {
+          "Max=1181695": "Min=90944"
+        },
+        "2026-02-14 11:16:34:216 900 sec: 19419 operations; 26.58 current ops/sec; est completion in 8 minutes [READ: Count=106": {
+          "Max=1181695": "Min=88512"
+        },
+        "2026-02-14 11:16:44:206 909 sec: 19684 operations; 26.52 current ops/sec; est completion in 7 minutes [READ: Count=108": {
+          "Max=1012223": "Min=86144"
+        },
+        "2026-02-14 11:16:54:208 920 sec: 19947 operations; 26.29 current ops/sec; est completion in 7 minutes [READ: Count=98": {
+          "Max=867327": "Min=89984"
+        },
+        "2026-02-14 11:17:04:212 930 sec: 20209 operations; 26.19 current ops/sec; est completion in 7 minutes [READ: Count=105": {
+          "Max=509951": "Min=87552"
+        },
+        "2026-02-14 11:17:14:210 940 sec: 20467 operations; 25.81 current ops/sec; est completion in 7 minutes [READ: Count=95": {
+          "Max=534527": "Min=91136"
+        },
+        "2026-02-14 11:17:24:215 950 sec: 20742 operations; 27.49 current ops/sec; est completion in 7 minutes [READ: Count=108": {
+          "Max=506367": "Min=91648"
+        },
+        "2026-02-14 11:17:34:216 960 sec: 21016 operations; 27.4 current ops/sec; est completion in 6 minutes [READ: Count=101": {
+          "Max=952319": "Min=91584"
+        },
+        "2026-02-14 11:17:44:209 970 sec: 21285 operations; 26.92 current ops/sec; est completion in 6 minutes [READ: Count=103": {
+          "Max=554495": "Min=92224"
+        },
+        "2026-02-14 11:17:54:214 980 sec: 21568 operations; 28.29 current ops/sec; est completion in 6 minutes [READ: Count=127": {
+          "Max=504063": "Min=93376"
+        },
+        "2026-02-14 11:18:04:208 990 sec: 21847 operations; 27.92 current ops/sec; est completion in 6 minutes [READ: Count=122": {
+          "Max=507903": "Min=89856"
+        },
+        "2026-02-14 11:18:14:208 1000 sec: 22100 operations; 25.3 current ops/sec; est completion in 5 minutes [READ: Count=91": {
+          "Max=790015": "Min=85568"
+        },
+        "2026-02-14 11:18:24:212 1010 sec: 22351 operations; 25.09 current ops/sec; est completion in 5 minutes [READ: Count=95": {
+          "Max=1083391": "Min=89152"
+        },
+        "2026-02-14 11:18:34:214 1020 sec: 22631 operations; 27.99 current ops/sec; est completion in 5 minutes [READ: Count=117": {
+          "Max=514815": "Min=89408"
+        },
+        "2026-02-14 11:18:44:206 1029 sec: 22902 operations; 27.12 current ops/sec; est completion in 5 minutes [READ: Count=109": {
+          "Max=911359": "Min=93312"
+        },
+        "2026-02-14 11:18:54:213 1040 sec: 23162 operations; 25.98 current ops/sec; est completion in 5 minutes [READ: Count=101": {
+          "Max=504831": "Min=93440"
+        },
+        "2026-02-14 11:19:04:215 1050 sec: 23431 operations; 26.89 current ops/sec; est completion in 4 minutes [READ: Count=122": {
+          "Max=534527": "Min=95552"
+        },
+        "2026-02-14 11:19:14:208 1060 sec: 23694 operations; 26.32 current ops/sec; est completion in 4 minutes [READ: Count=113": {
+          "Max=534015": "Min=94400"
+        },
+        "2026-02-14 11:19:24:213 1070 sec: 23971 operations; 27.68 current ops/sec; est completion in 4 minutes [READ: Count=120": {
+          "Max=503295": "Min=92800"
+        },
+        "2026-02-14 11:19:34:215 1080 sec: 24226 operations; 25.49 current ops/sec; est completion in 4 minutes [READ: Count=108": {
+          "Max=2902015": "Min=94400"
+        },
+        "2026-02-14 11:19:44:210 1090 sec: 24501 operations; 27.52 current ops/sec; est completion in 4 minutes [READ: Count=123": {
+          "Max=521727": "Min=94592"
+        },
+        "2026-02-14 11:19:54:215 1100 sec: 24761 operations; 25.98 current ops/sec; est completion in 3 minutes [READ: Count=102": {
+          "Max=518655": "Min=96896"
+        },
+        "2026-02-14 11:20:04:208 1110 sec: 25013 operations; 25.22 current ops/sec; est completion in 3 minutes [READ: Count=90": {
+          "Max=1883135": "Min=92416"
+        },
+        "2026-02-14 11:20:14:215 1120 sec: 25251 operations; 23.79 current ops/sec; est completion in 3 minutes [READ: Count=99": {
+          "Max=1596415": "Min=103424"
+        },
+        "2026-02-14 11:20:24:212 1130 sec: 25521 operations; 27.01 current ops/sec; est completion in 3 minutes [READ: Count=118": {
+          "Max=508927": "Min=95872"
+        },
+        "2026-02-14 11:20:34:213 1140 sec: 25779 operations; 25.8 current ops/sec; est completion in 3 minutes [READ: Count=96": {
+          "Max=532479": "Min=92224"
+        },
+        "2026-02-14 11:20:44:208 1150 sec: 26040 operations; 26.11 current ops/sec; est completion in 2 minutes [READ: Count=101": {
+          "Max=581631": "Min=94848"
+        },
+        "2026-02-14 11:20:54:207 1160 sec: 26272 operations; 23.2 current ops/sec; est completion in 2 minutes [READ: Count=83": {
+          "Max=5734399": "Min=92800"
+        },
+        "2026-02-14 11:21:04:211 1170 sec: 26520 operations; 24.79 current ops/sec; est completion in 2 minutes [READ: Count=102": {
+          "Max=4038655": "Min=87104"
+        },
+        "2026-02-14 11:21:14:215 1180 sec: 26754 operations; 23.39 current ops/sec; est completion in 2 minutes [READ: Count=81": {
+          "Max=1899519": "Min=96384"
+        },
+        "2026-02-14 11:21:24:210 1190 sec: 26991 operations; 23.71 current ops/sec; est completion in 2 minutes [READ: Count=80": {
+          "Max=1299455": "Min=92608"
+        },
+        "2026-02-14 11:21:34:213 1200 sec: 27214 operations; 22.29 current ops/sec; est completion in 2 minutes [READ: Count=84": {
+          "Max=2275327": "Min=86016"
+        },
+        "2026-02-14 11:21:44:214 1210 sec: 27470 operations; 25.6 current ops/sec; est completion in 1 minute [READ: Count=117": {
+          "Max=1239039": "Min=92608"
+        },
+        "2026-02-14 11:21:54:209 1220 sec: 27726 operations; 25.61 current ops/sec; est completion in 1 minute [READ: Count=104": {
+          "Max=4562943": "Min=86656"
+        },
+        "2026-02-14 11:22:04:208 1230 sec: 27984 operations; 25.8 current ops/sec; est completion in 1 minute [READ: Count=101": {
+          "Max=1412095": "Min=91072"
+        },
+        "2026-02-14 11:22:14:209 1240 sec: 28243 operations; 25.9 current ops/sec; est completion in 1 minute [READ: Count=98": {
+          "Max=823295": "Min=94080"
+        },
+        "2026-02-14 11:22:24:214 1250 sec: 28507 operations; 26.38 current ops/sec; est completion in 1 minute [READ: Count=108": {
+          "Max=1516543": "Min=90624"
+        },
+        "2026-02-14 11:22:34:209 1260 sec: 28774 operations; 26.71 current ops/sec; est completion in 54 seconds [READ: Count=119": {
+          "Max=1190911": "Min=86528"
+        },
+        "2026-02-14 11:22:44:205 1269 sec: 28980 operations; 20.61 current ops/sec; est completion in 45 seconds [READ: Count=77": {
+          "Max=1099775": "Min=87488"
+        },
+        "2026-02-14 11:22:54:208 1280 sec: 29174 operations; 19.39 current ops/sec; est completion in 37 seconds [READ: Count=69": {
+          "Max=1087487": "Min=88448"
+        },
+        "2026-02-14 11:23:04:212 1290 sec: 29345 operations; 17.09 current ops/sec; est completion in 29 seconds [READ: Count=83": {
+          "Max=4296703": "Min=90368"
+        },
+        "2026-02-14 11:23:14:212 1300 sec: 29511 operations; 16.6 current ops/sec; est completion in 22 seconds [READ: Count=66": {
+          "Max=1369087": "Min=86592"
+        },
+        "2026-02-14 11:23:24:209 1310 sec: 29632 operations; 12.1 current ops/sec; est completion in 17 seconds [READ: Count=52": {
+          "Max=1519615": "Min=90240"
+        },
+        "2026-02-14 11:23:34:213 1320 sec: 29737 operations; 10.49 current ops/sec; est completion in 12 seconds [READ: Count=38": {
+          "Max=1114111": "Min=84992"
+        },
+        "2026-02-14 11:23:44:209 1330 sec: 29844 operations; 10.7 current ops/sec; est completion in 7 second [READ: Count=46": {
+          "Max=514815": "Min=89600"
+        },
+        "2026-02-14 11:23:54:208 1340 sec: 29947 operations; 10.3 current ops/sec; est completion in 3 second [READ: Count=51": {
+          "Max=514047": "Min=87168"
+        },
+        "2026-02-14 11:24:04:214 1350 sec: 29980 operations; 3.3 current ops/sec; est completion in 1 second [READ: Count=9": {
+          "Max=482559": "Min=113408"
+        },
+        "2026-02-14 11:24:10:560 1356 sec: 30000 operations; 3.15 current ops/sec; [READ: Count=6": {
+          "Max=301567": "Min=112640"
+        },
+        "OVERALL": {
+          "RunTime(ms)": 1356353.0,
+          "Throughput(ops/sec)": 22.1181359129961
+        },
+        "TOTAL_GCS_G1_Young_Generation": {
+          "Count": 34.0
+        },
+        "TOTAL_GC_TIME_G1_Young_Generation": {
+          "Time(ms)": 55.0
+        },
+        "TOTAL_GC_TIME_%_G1_Young_Generation": {
+          "Time(%)": 0.0040549915840492855
+        },
+        "TOTAL_GCS_G1_Concurrent_GC": {
+          "Count": 2.0
+        },
+        "TOTAL_GC_TIME_G1_Concurrent_GC": {
+          "Time(ms)": 1.0
+        },
+        "TOTAL_GC_TIME_%_G1_Concurrent_GC": {
+          "Time(%)": 7.3727119709987e-05
+        },
+        "TOTAL_GCS_G1_Old_Generation": {
+          "Count": 0.0
+        },
+        "TOTAL_GC_TIME_G1_Old_Generation": {
+          "Time(ms)": 0.0
+        },
+        "TOTAL_GC_TIME_%_G1_Old_Generation": {
+          "Time(%)": 0.0
+        },
+        "TOTAL_GCs": {
+          "Count": 36.0
+        },
+        "TOTAL_GC_TIME": {
+          "Time(ms)": 56.0
+        },
+        "TOTAL_GC_TIME_%": {
+          "Time(%)": 0.004128718703759272
+        },
+        "READ": {
+          "Operations": 12134.0,
+          "AverageLatency(us)": 311589.907367727,
+          "MinLatency(us)": 84992.0,
+          "MaxLatency(us)": 44695551.0,
+          "50thPercentileLatency(us)": 269823.0,
+          "90thPercentileLatency(us)": 510463.0,
+          "95thPercentileLatency(us)": 873983.0,
+          "99thPercentileLatency(us)": 1569791.0,
+          "99.9PercentileLatency(us)": 3180543.0,
+          "Return=OK": 12134.0
+        },
+        "CLEANUP": {
+          "Operations": 8.0,
+          "AverageLatency(us)": 1.125,
+          "MinLatency(us)": 1.0,
+          "MaxLatency(us)": 2.0,
+          "50thPercentileLatency(us)": 1.0,
+          "90thPercentileLatency(us)": 2.0,
+          "95thPercentileLatency(us)": 2.0,
+          "99thPercentileLatency(us)": 2.0,
+          "99.9PercentileLatency(us)": 2.0
+        },
+        "INSERT": {
+          "Operations": 5854.0,
+          "AverageLatency(us)": 376152.36897847627,
+          "MinLatency(us)": 114112.0,
+          "MaxLatency(us)": 46432255.0,
+          "50thPercentileLatency(us)": 309503.0,
+          "90thPercentileLatency(us)": 525823.0,
+          "95thPercentileLatency(us)": 568831.0,
+          "99thPercentileLatency(us)": 789503.0,
+          "99.9PercentileLatency(us)": 10772479.0,
+          "Return=OK": 5854.0
+        },
+        "UPDATE": {
+          "Operations": 12012.0,
+          "AverageLatency(us)": 371488.9030969031,
+          "MinLatency(us)": 110016.0,
+          "MaxLatency(us)": 42762239.0,
+          "50thPercentileLatency(us)": 313855.0,
+          "90thPercentileLatency(us)": 543743.0,
+          "95thPercentileLatency(us)": 567295.0,
+          "99thPercentileLatency(us)": 808447.0,
+          "99.9PercentileLatency(us)": 3975167.0,
+          "Return=OK": 12012.0
+        }
+      },
+      "config": {
+        "workload": "site.ycsb.workloads.CoreWorkload",
+        "recordcount": "5000",
+        "operationcount": "30000",
+        "readallfields": "true",
+        "readproportion": "0.4",
+        "updateproportion": "0.4",
+        "insertproportion": "0.2",
+        "scanproportion": "0",
+        "requestdistribution": "zipfian",
+        "zipfianconstant": "0.99",
+        "db": "site.ycsb.db.DynamoDBClient",
+        "dynamodb.endpoint": "http://localhost:8787",
+        "threadcount": "8",
+        "measurementtype": "hdrhistogram",
+        "hdrhistogram.percentiles": "50,90,95,99,99.9"
+      },
+      "raw_file": "run_variant_a_20260214_105651.txt"
+    },
+    {
+      "variant": "Sustained Mixed Load",
+      "metrics": {
+        "2026-02-14 11:44:21:605 10 sec: 134 operations; 13.39 current ops/sec; est completion in 1 hour 39 minutes [READ: Count=81": {
+          "Max=2369535": "Min=97920"
+        },
+        "2026-02-14 11:44:31:596 20 sec: 284 operations; 15.01 current ops/sec; est completion in 1 hour 33 minutes [READ: Count=94": {
+          "Max=3586047": "Min=91264"
+        },
+        "2026-02-14 11:44:41:604 30 sec: 447 operations; 16.29 current ops/sec; est completion in 1 hour 29 minutes [READ: Count=80": {
+          "Max=1557503": "Min=99648"
+        },
+        "2026-02-14 11:44:51:596 40 sec: 601 operations; 15.41 current ops/sec; est completion in 1 hour 28 minutes [READ: Count=92": {
+          "Max=2207743": "Min=92032"
+        },
+        "2026-02-14 11:45:01:605 50 sec: 770 operations; 16.89 current ops/sec; est completion in 1 hour 25 minutes [READ: Count=102": {
+          "Max=2701311": "Min=94272"
+        },
+        "2026-02-14 11:45:11:597 60 sec: 939 operations; 16.91 current ops/sec; est completion in 1 hour 24 minutes [READ: Count=104": {
+          "Max=2220031": "Min=94592"
+        },
+        "2026-02-14 11:45:21:603 70 sec: 1131 operations; 19.19 current ops/sec; est completion in 1 hour 21 minutes [READ: Count=111": {
+          "Max=1296383": "Min=95680"
+        },
+        "2026-02-14 11:45:31:605 80 sec: 1311 operations; 18 current ops/sec; est completion in 1 hour 20 minutes [READ: Count=100": {
+          "Max=4188159": "Min=94336"
+        },
+        "2026-02-14 11:45:41:600 90 sec: 1499 operations; 18.81 current ops/sec; est completion in 1 hour 18 minutes [READ: Count=116": {
+          "Max=2908159": "Min=88128"
+        },
+        "2026-02-14 11:45:51:606 100 sec: 1689 operations; 18.99 current ops/sec; est completion in 1 hour 17 minutes [READ: Count=111": {
+          "Max=2476031": "Min=89280"
+        },
+        "2026-02-14 11:46:01:596 110 sec: 1870 operations; 18.12 current ops/sec; est completion in 1 hour 16 minutes [READ: Count=106": {
+          "Max=1915903": "Min=87616"
+        },
+        "2026-02-14 11:46:11:596 120 sec: 2071 operations; 20.1 current ops/sec; est completion in 1 hour 15 minutes [READ: Count=127": {
+          "Max=1763327": "Min=94848"
+        },
+        "2026-02-14 11:46:21:597 130 sec: 2289 operations; 21.8 current ops/sec; est completion in 1 hour 13 minutes [READ: Count=129": {
+          "Max=3203071": "Min=92480"
+        },
+        "2026-02-14 11:46:31:599 140 sec: 2495 operations; 20.6 current ops/sec; est completion in 1 hour 12 minutes [READ: Count=126": {
+          "Max=1547263": "Min=89664"
+        },
+        "2026-02-14 11:46:41:606 150 sec: 2704 operations; 20.89 current ops/sec; est completion in 1 hour 11 minutes [READ: Count=118": {
+          "Max=1298431": "Min=88320"
+        },
+        "2026-02-14 11:46:51:605 160 sec: 2928 operations; 22.4 current ops/sec; est completion in 1 hour 10 minutes [READ: Count=137": {
+          "Max=1285119": "Min=86400"
+        },
+        "2026-02-14 11:47:01:605 170 sec: 3143 operations; 21.5 current ops/sec; est completion in 1 hour 9 minutes [READ: Count=132": {
+          "Max=2457599": "Min=82112"
+        },
+        "2026-02-14 11:47:11:603 180 sec: 3353 operations; 21 current ops/sec; est completion in 1 hour 8 minutes [READ: Count=138": {
+          "Max=1978367": "Min=96128"
+        },
+        "2026-02-14 11:47:21:605 190 sec: 3591 operations; 23.8 current ops/sec; est completion in 1 hour 7 minutes [READ: Count=138": {
+          "Max=974335": "Min=88000"
+        },
+        "2026-02-14 11:47:31:605 200 sec: 3803 operations; 21.2 current ops/sec; est completion in 1 hour 6 minutes [READ: Count=116": {
+          "Max=1305599": "Min=88832"
+        },
+        "2026-02-14 11:47:41:605 210 sec: 4019 operations; 21.6 current ops/sec; est completion in 1 hour 6 minutes [READ: Count=125": {
+          "Max=1911807": "Min=88064"
+        },
+        "2026-02-14 11:47:51:605 220 sec: 4248 operations; 22.9 current ops/sec; est completion in 1 hour 5 minutes [READ: Count=138": {
+          "Max=1345535": "Min=87168"
+        },
+        "2026-02-14 11:48:01:602 230 sec: 4495 operations; 24.71 current ops/sec; est completion in 1 hour 4 minutes [READ: Count=135": {
+          "Max=1327103": "Min=88000"
+        },
+        "2026-02-14 11:48:11:605 240 sec: 4722 operations; 22.69 current ops/sec; est completion in 1 hour 3 minutes [READ: Count=139": {
+          "Max=1281023": "Min=85440"
+        },
+        "2026-02-14 11:48:21:603 250 sec: 4958 operations; 23.6 current ops/sec; est completion in 1 hour 3 minutes [READ: Count=148": {
+          "Max=1092607": "Min=88384"
+        },
+        "2026-02-14 11:48:31:598 260 sec: 5196 operations; 23.81 current ops/sec; est completion in 1 hour 2 minutes [READ: Count=146": {
+          "Max=845823": "Min=85376"
+        },
+        "2026-02-14 11:48:41:604 270 sec: 5408 operations; 21.19 current ops/sec; est completion in 1 hour 2 minutes [READ: Count=128": {
+          "Max=1454079": "Min=87360"
+        },
+        "2026-02-14 11:48:51:595 280 sec: 5602 operations; 19.42 current ops/sec; est completion in 1 hour 1 minute [READ: Count=126": {
+          "Max=1010687": "Min=91648"
+        },
+        "2026-02-14 11:49:01:602 290 sec: 5810 operations; 20.79 current ops/sec; est completion in 1 hour 1 minute [READ: Count=118": {
+          "Max=1102847": "Min=93504"
+        },
+        "2026-02-14 11:49:11:597 300 sec: 6002 operations; 19.21 current ops/sec; est completion in 1 hour 1 minute [READ: Count=113": {
+          "Max=589311": "Min=103616"
+        },
+        "2026-02-14 11:49:21:604 310 sec: 6211 operations; 20.89 current ops/sec; est completion in 1 hour 1 minute [READ: Count=141": {
+          "Max=998911": "Min=91648"
+        },
+        "2026-02-14 11:49:31:595 320 sec: 6415 operations; 20.42 current ops/sec; est completion in 1 hour 1 minute [READ: Count=125": {
+          "Max=555519": "Min=98112"
+        },
+        "2026-02-14 11:49:41:604 330 sec: 6597 operations; 18.19 current ops/sec; est completion in 1 hour 1 minute [READ: Count=101": {
+          "Max=1038847": "Min=91968"
+        },
+        "2026-02-14 11:49:51:604 340 sec: 6802 operations; 20.5 current ops/sec; est completion in 1 hour [READ: Count=131": {
+          "Max=1015295": "Min=94272"
+        },
+        "2026-02-14 11:50:01:604 350 sec: 7009 operations; 20.7 current ops/sec; est completion in 1 hour [READ: Count=127": {
+          "Max=931327": "Min=96128"
+        },
+        "2026-02-14 11:50:11:596 360 sec: 7199 operations; 19.02 current ops/sec; est completion in 1 hour [READ: Count=118": {
+          "Max=571391": "Min=104320"
+        },
+        "2026-02-14 11:50:21:605 370 sec: 7404 operations; 20.48 current ops/sec; est completion in 1 hour [READ: Count=123": {
+          "Max=3065855": "Min=97280"
+        },
+        "2026-02-14 11:50:31:602 380 sec: 7610 operations; 20.6 current ops/sec; est completion in 1 hour [READ: Count=109": {
+          "Max=1302527": "Min=95936"
+        },
+        "2026-02-14 11:50:41:602 390 sec: 7835 operations; 22.5 current ops/sec; est completion in 59 minutes [READ: Count=130": {
+          "Max=549887": "Min=94848"
+        },
+        "2026-02-14 11:50:51:604 400 sec: 8053 operations; 21.8 current ops/sec; est completion in 59 minutes [READ: Count=131": {
+          "Max=1135615": "Min=96960"
+        },
+        "2026-02-14 11:51:01:605 410 sec: 8261 operations; 20.8 current ops/sec; est completion in 59 minutes [READ: Count=122": {
+          "Max=537087": "Min=94656"
+        },
+        "2026-02-14 11:51:11:605 420 sec: 8470 operations; 20.9 current ops/sec; est completion in 59 minutes [READ: Count=129": {
+          "Max=566783": "Min=92480"
+        },
+        "2026-02-14 11:51:21:605 430 sec: 8686 operations; 21.6 current ops/sec; est completion in 58 minutes [READ: Count=121": {
+          "Max=730111": "Min=92032"
+        },
+        "2026-02-14 11:51:31:605 440 sec: 8887 operations; 20.1 current ops/sec; est completion in 58 minutes [READ: Count=126": {
+          "Max=1030143": "Min=94016"
+        },
+        "2026-02-14 11:51:41:605 450 sec: 9084 operations; 19.7 current ops/sec; est completion in 58 minutes [READ: Count=120": {
+          "Max=2551807": "Min=89088"
+        },
+        "2026-02-14 11:51:51:598 460 sec: 9289 operations; 20.51 current ops/sec; est completion in 58 minutes [READ: Count=119": {
+          "Max=1214463": "Min=87552"
+        },
+        "2026-02-14 11:52:01:598 470 sec: 9491 operations; 20.2 current ops/sec; est completion in 58 minutes [READ: Count=119": {
+          "Max=559615": "Min=91456"
+        },
+        "2026-02-14 11:52:11:596 480 sec: 9686 operations; 19.51 current ops/sec; est completion in 58 minutes [READ: Count=104": {
+          "Max=891903": "Min=88384"
+        },
+        "2026-02-14 11:52:21:595 490 sec: 9885 operations; 19.9 current ops/sec; est completion in 57 minutes [READ: Count=112": {
+          "Max=1170431": "Min=91968"
+        },
+        "2026-02-14 11:52:31:605 500 sec: 10097 operations; 21.18 current ops/sec; est completion in 57 minutes [READ: Count=131": {
+          "Max=2551807": "Min=92352"
+        },
+        "2026-02-14 11:52:41:600 510 sec: 10325 operations; 22.81 current ops/sec; est completion in 57 minutes [READ: Count=136": {
+          "Max=567807": "Min=94464"
+        },
+        "2026-02-14 11:52:51:595 520 sec: 10522 operations; 19.71 current ops/sec; est completion in 57 minutes [READ: Count=112": {
+          "Max=995839": "Min=96512"
+        },
+        "2026-02-14 11:53:01:596 530 sec: 10742 operations; 22 current ops/sec; est completion in 56 minutes [READ: Count=126": {
+          "Max=520959": "Min=93824"
+        },
+        "2026-02-14 11:53:11:596 540 sec: 10963 operations; 22.1 current ops/sec; est completion in 56 minutes [READ: Count=133": {
+          "Max=923647": "Min=88448"
+        },
+        "2026-02-14 11:53:21:598 550 sec: 11177 operations; 21.4 current ops/sec; est completion in 56 minutes [READ: Count=128": {
+          "Max=920063": "Min=94656"
+        },
+        "2026-02-14 11:53:31:605 560 sec: 11388 operations; 21.09 current ops/sec; est completion in 56 minutes [READ: Count=115": {
+          "Max=524799": "Min=91712"
+        },
+        "2026-02-14 11:53:41:605 570 sec: 11600 operations; 21.2 current ops/sec; est completion in 56 minutes [READ: Count=119": {
+          "Max=833023": "Min=91648"
+        },
+        "2026-02-14 11:53:51:597 580 sec: 11817 operations; 21.72 current ops/sec; est completion in 55 minutes [READ: Count=128": {
+          "Max=617983": "Min=87680"
+        },
+        "2026-02-14 11:54:01:603 590 sec: 12026 operations; 20.89 current ops/sec; est completion in 55 minutes [READ: Count=126": {
+          "Max=862207": "Min=93952"
+        },
+        "2026-02-14 11:54:11:605 600 sec: 12229 operations; 20.3 current ops/sec; est completion in 55 minutes [READ: Count=120": {
+          "Max=566271": "Min=95424"
+        },
+        "2026-02-14 11:54:21:596 610 sec: 12411 operations; 18.22 current ops/sec; est completion in 55 minutes [READ: Count=121": {
+          "Max=913919": "Min=98816"
+        },
+        "2026-02-14 11:54:31:600 620 sec: 12623 operations; 21.19 current ops/sec; est completion in 55 minutes [READ: Count=140": {
+          "Max=3284991": "Min=91584"
+        },
+        "2026-02-14 11:54:41:595 630 sec: 12833 operations; 21.01 current ops/sec; est completion in 54 minutes [READ: Count=115": {
+          "Max=1189887": "Min=92480"
+        },
+        "2026-02-14 11:54:51:604 640 sec: 13022 operations; 18.88 current ops/sec; est completion in 54 minutes [READ: Count=112": {
+          "Max=3055615": "Min=93504"
+        },
+        "2026-02-14 11:55:01:596 650 sec: 13250 operations; 22.82 current ops/sec; est completion in 54 minutes [READ: Count=144": {
+          "Max=544767": "Min=92992"
+        },
+        "2026-02-14 11:55:11:605 660 sec: 13471 operations; 22.08 current ops/sec; est completion in 54 minutes [READ: Count=136": {
+          "Max=561663": "Min=90752"
+        },
+        "2026-02-14 11:55:21:605 670 sec: 13685 operations; 21.4 current ops/sec; est completion in 54 minutes [READ: Count=133": {
+          "Max=1231871": "Min=94784"
+        },
+        "2026-02-14 11:55:31:603 680 sec: 13914 operations; 22.9 current ops/sec; est completion in 53 minutes [READ: Count=131": {
+          "Max=716799": "Min=90240"
+        },
+        "2026-02-14 11:55:41:595 690 sec: 14112 operations; 19.82 current ops/sec; est completion in 53 minutes [READ: Count=125": {
+          "Max=811519": "Min=93824"
+        },
+        "2026-02-14 11:55:51:602 700 sec: 14315 operations; 20.29 current ops/sec; est completion in 53 minutes [READ: Count=125": {
+          "Max=600063": "Min=92672"
+        },
+        "2026-02-14 11:56:01:595 710 sec: 14517 operations; 20.21 current ops/sec; est completion in 53 minutes [READ: Count=126": {
+          "Max=1461247": "Min=91072"
+        },
+        "2026-02-14 11:56:11:598 720 sec: 14722 operations; 20.5 current ops/sec; est completion in 53 minutes [READ: Count=102": {
+          "Max=565759": "Min=95936"
+        },
+        "2026-02-14 11:56:21:595 729 sec: 14948 operations; 22.61 current ops/sec; est completion in 52 minutes [READ: Count=135": {
+          "Max=566783": "Min=94592"
+        },
+        "2026-02-14 11:56:31:596 740 sec: 15184 operations; 23.6 current ops/sec; est completion in 52 minutes [READ: Count=143": {
+          "Max=550399": "Min=96384"
+        },
+        "2026-02-14 11:56:41:595 750 sec: 15421 operations; 23.7 current ops/sec; est completion in 52 minutes [READ: Count=134": {
+          "Max=552959": "Min=91648"
+        },
+        "2026-02-14 11:56:51:595 759 sec: 15651 operations; 23 current ops/sec; est completion in 52 minutes [READ: Count=144": {
+          "Max=624639": "Min=90176"
+        },
+        "2026-02-14 11:57:01:605 770 sec: 15887 operations; 23.58 current ops/sec; est completion in 51 minutes [READ: Count=141": {
+          "Max=545279": "Min=89344"
+        },
+        "2026-02-14 11:57:11:604 780 sec: 16124 operations; 23.7 current ops/sec; est completion in 51 minutes [READ: Count=138": {
+          "Max=531967": "Min=93568"
+        },
+        "2026-02-14 11:57:21:601 790 sec: 16343 operations; 21.9 current ops/sec; est completion in 51 minutes [READ: Count=129": {
+          "Max=702463": "Min=86080"
+        },
+        "2026-02-14 11:57:31:596 800 sec: 16573 operations; 23.01 current ops/sec; est completion in 51 minutes [READ: Count=139": {
+          "Max=863743": "Min=87808"
+        },
+        "2026-02-14 11:57:41:597 810 sec: 16800 operations; 22.7 current ops/sec; est completion in 50 minutes [READ: Count=139": {
+          "Max=521215": "Min=89856"
+        },
+        "2026-02-14 11:57:51:604 820 sec: 17019 operations; 21.88 current ops/sec; est completion in 50 minutes [READ: Count=133": {
+          "Max=552959": "Min=85120"
+        },
+        "2026-02-14 11:58:01:594 829 sec: 17234 operations; 21.52 current ops/sec; est completion in 50 minutes [READ: Count=132": {
+          "Max=846847": "Min=90880"
+        },
+        "2026-02-14 11:58:11:603 840 sec: 17438 operations; 20.38 current ops/sec; est completion in 50 minutes [READ: Count=125": {
+          "Max=947199": "Min=96384"
+        },
+        "2026-02-14 11:58:21:599 850 sec: 17629 operations; 19.11 current ops/sec; est completion in 50 minutes [READ: Count=116": {
+          "Max=1873919": "Min=91008"
+        },
+        "2026-02-14 11:58:31:604 860 sec: 17840 operations; 21.09 current ops/sec; est completion in 49 minutes [READ: Count=125": {
+          "Max=1180671": "Min=91776"
+        },
+        "2026-02-14 11:58:41:597 870 sec: 18063 operations; 22.32 current ops/sec; est completion in 49 minutes [READ: Count=135": {
+          "Max=740351": "Min=85056"
+        },
+        "2026-02-14 11:58:51:596 880 sec: 18286 operations; 22.3 current ops/sec; est completion in 49 minutes [READ: Count=146": {
+          "Max=602111": "Min=90048"
+        },
+        "2026-02-14 11:59:01:600 890 sec: 18492 operations; 20.59 current ops/sec; est completion in 49 minutes [READ: Count=116": {
+          "Max=701439": "Min=91200"
+        },
+        "2026-02-14 11:59:11:595 899 sec: 18698 operations; 20.61 current ops/sec; est completion in 49 minutes [READ: Count=125": {
+          "Max=1169407": "Min=91392"
+        },
+        "2026-02-14 11:59:21:595 909 sec: 18898 operations; 20 current ops/sec; est completion in 49 minutes [READ: Count=128": {
+          "Max=1287167": "Min=89920"
+        },
+        "2026-02-14 11:59:31:604 920 sec: 19106 operations; 20.78 current ops/sec; est completion in 48 minutes [READ: Count=114": {
+          "Max=647167": "Min=86016"
+        },
+        "2026-02-14 11:59:41:604 930 sec: 19323 operations; 21.7 current ops/sec; est completion in 48 minutes [READ: Count=124": {
+          "Max=561151": "Min=84928"
+        },
+        "2026-02-14 11:59:51:602 940 sec: 19519 operations; 19.6 current ops/sec; est completion in 48 minutes [READ: Count=126": {
+          "Max=2001919": "Min=81792"
+        },
+        "2026-02-14 12:00:01:594 949 sec: 19735 operations; 21.62 current ops/sec; est completion in 48 minutes [READ: Count=131": {
+          "Max=564223": "Min=88192"
+        },
+        "2026-02-14 12:00:11:602 960 sec: 19925 operations; 18.98 current ops/sec; est completion in 48 minutes [READ: Count=100": {
+          "Max=1076223": "Min=91776"
+        },
+        "2026-02-14 12:00:21:604 970 sec: 20088 operations; 16.3 current ops/sec; est completion in 48 minutes [READ: Count=93": {
+          "Max=2566143": "Min=93568"
+        },
+        "2026-02-14 12:00:31:600 980 sec: 20262 operations; 17.41 current ops/sec; est completion in 48 minutes [READ: Count=95": {
+          "Max=2220031": "Min=90368"
+        },
+        "2026-02-14 12:00:41:599 990 sec: 20454 operations; 19.2 current ops/sec; est completion in 48 minutes [READ: Count=110": {
+          "Max=1348607": "Min=90432"
+        },
+        "2026-02-14 12:00:51:596 1000 sec: 20640 operations; 18.61 current ops/sec; est completion in 47 minutes [READ: Count=110": {
+          "Max=1777663": "Min=94784"
+        },
+        "2026-02-14 12:01:01:604 1010 sec: 20820 operations; 17.99 current ops/sec; est completion in 47 minutes [READ: Count=103": {
+          "Max=918527": "Min=97536"
+        },
+        "2026-02-14 12:01:11:604 1020 sec: 20993 operations; 17.3 current ops/sec; est completion in 47 minutes [READ: Count=98": {
+          "Max=1639423": "Min=87360"
+        },
+        "2026-02-14 12:01:21:603 1030 sec: 21193 operations; 20 current ops/sec; est completion in 47 minutes [READ: Count=122": {
+          "Max=1787903": "Min=92160"
+        },
+        "2026-02-14 12:01:31:603 1040 sec: 21390 operations; 19.7 current ops/sec; est completion in 47 minutes [READ: Count=117": {
+          "Max=1286143": "Min=90880"
+        },
+        "2026-02-14 12:01:41:599 1050 sec: 21578 operations; 18.81 current ops/sec; est completion in 47 minutes [READ: Count=111": {
+          "Max=4833279": "Min=97088"
+        },
+        "2026-02-14 12:01:51:603 1060 sec: 21785 operations; 20.69 current ops/sec; est completion in 47 minutes [READ: Count=126": {
+          "Max=2226175": "Min=91840"
+        },
+        "2026-02-14 12:02:01:602 1070 sec: 21982 operations; 19.7 current ops/sec; est completion in 47 minutes [READ: Count=114": {
+          "Max=2080767": "Min=92160"
+        },
+        "2026-02-14 12:02:11:601 1080 sec: 22180 operations; 19.8 current ops/sec; est completion in 46 minutes [READ: Count=113": {
+          "Max=2693119": "Min=97344"
+        },
+        "2026-02-14 12:02:21:603 1090 sec: 22389 operations; 20.9 current ops/sec; est completion in 46 minutes [READ: Count=118": {
+          "Max=2050047": "Min=92672"
+        },
+        "2026-02-14 12:02:31:603 1100 sec: 22596 operations; 20.7 current ops/sec; est completion in 46 minutes [READ: Count=130": {
+          "Max=1978367": "Min=97088"
+        },
+        "2026-02-14 12:02:41:603 1110 sec: 22802 operations; 20.6 current ops/sec; est completion in 46 minutes [READ: Count=133": {
+          "Max=1723391": "Min=96640"
+        },
+        "2026-02-14 12:02:51:601 1120 sec: 23011 operations; 20.9 current ops/sec; est completion in 46 minutes [READ: Count=123": {
+          "Max=760831": "Min=96576"
+        },
+        "2026-02-14 12:03:01:603 1130 sec: 23210 operations; 19.9 current ops/sec; est completion in 46 minutes [READ: Count=130": {
+          "Max=2803711": "Min=96000"
+        },
+        "2026-02-14 12:03:11:603 1140 sec: 23408 operations; 19.8 current ops/sec; est completion in 45 minutes [READ: Count=122": {
+          "Max=2574335": "Min=100160"
+        },
+        "2026-02-14 12:03:21:601 1150 sec: 23596 operations; 18.8 current ops/sec; est completion in 45 minutes [READ: Count=115": {
+          "Max=1901567": "Min=109184"
+        },
+        "2026-02-14 12:03:31:603 1160 sec: 23793 operations; 19.7 current ops/sec; est completion in 45 minutes [READ: Count=121": {
+          "Max=1084415": "Min=103040"
+        },
+        "2026-02-14 12:03:41:603 1170 sec: 23980 operations; 18.7 current ops/sec; est completion in 45 minutes [READ: Count=115": {
+          "Max=1559551": "Min=100864"
+        },
+        "2026-02-14 12:03:51:603 1180 sec: 24168 operations; 18.8 current ops/sec; est completion in 45 minutes [READ: Count=101": {
+          "Max=1139711": "Min=108672"
+        },
+        "2026-02-14 12:04:01:603 1190 sec: 24361 operations; 19.3 current ops/sec; est completion in 45 minutes [READ: Count=107": {
+          "Max=2020351": "Min=112576"
+        },
+        "2026-02-14 12:04:11:603 1200 sec: 24539 operations; 17.8 current ops/sec; est completion in 45 minutes [READ: Count=104": {
+          "Max=1095679": "Min=108928"
+        },
+        "2026-02-14 12:04:21:602 1210 sec: 24737 operations; 19.8 current ops/sec; est completion in 45 minutes [READ: Count=127": {
+          "Max=770047": "Min=102080"
+        },
+        "2026-02-14 12:04:31:594 1219 sec: 24913 operations; 17.61 current ops/sec; est completion in 44 minutes [READ: Count=101": {
+          "Max=1505279": "Min=101632"
+        },
+        "2026-02-14 12:04:41:596 1230 sec: 25098 operations; 18.5 current ops/sec; est completion in 44 minutes [READ: Count=118": {
+          "Max=893951": "Min=100672"
+        },
+        "2026-02-14 12:04:51:600 1240 sec: 25297 operations; 19.89 current ops/sec; est completion in 44 minutes [READ: Count=122": {
+          "Max=932863": "Min=99904"
+        },
+        "2026-02-14 12:05:01:603 1250 sec: 25504 operations; 20.69 current ops/sec; est completion in 44 minutes [READ: Count=125": {
+          "Max=563711": "Min=97280"
+        },
+        "2026-02-14 12:05:11:603 1260 sec: 25707 operations; 20.3 current ops/sec; est completion in 44 minutes [READ: Count=126": {
+          "Max=2181119": "Min=101248"
+        },
+        "2026-02-14 12:05:21:603 1270 sec: 25930 operations; 22.3 current ops/sec; est completion in 44 minutes [READ: Count=128": {
+          "Max=1495039": "Min=93888"
+        },
+        "2026-02-14 12:05:31:602 1280 sec: 26148 operations; 21.8 current ops/sec; est completion in 43 minutes [READ: Count=127": {
+          "Max=910335": "Min=93888"
+        },
+        "2026-02-14 12:05:41:603 1290 sec: 26361 operations; 21.3 current ops/sec; est completion in 43 minutes [READ: Count=131": {
+          "Max=552959": "Min=93952"
+        },
+        "2026-02-14 12:05:51:593 1299 sec: 26586 operations; 22.52 current ops/sec; est completion in 43 minutes [READ: Count=140": {
+          "Max=555007": "Min=94144"
+        },
+        "2026-02-14 12:06:01:593 1309 sec: 26802 operations; 21.6 current ops/sec; est completion in 43 minutes [READ: Count=135": {
+          "Max=532991": "Min=90624"
+        },
+        "2026-02-14 12:06:11:593 1319 sec: 27008 operations; 20.6 current ops/sec; est completion in 43 minutes [READ: Count=136": {
+          "Max=555007": "Min=93312"
+        },
+        "2026-02-14 12:06:21:593 1329 sec: 27232 operations; 22.4 current ops/sec; est completion in 42 minutes [READ: Count=137": {
+          "Max=547327": "Min=92480"
+        },
+        "2026-02-14 12:06:31:601 1340 sec: 27431 operations; 19.88 current ops/sec; est completion in 42 minutes [READ: Count=112": {
+          "Max=829439": "Min=92736"
+        },
+        "2026-02-14 12:06:41:594 1349 sec: 27636 operations; 20.51 current ops/sec; est completion in 42 minutes [READ: Count=125": {
+          "Max=531967": "Min=88384"
+        },
+        "2026-02-14 12:06:51:594 1359 sec: 27845 operations; 20.9 current ops/sec; est completion in 42 minutes [READ: Count=129": {
+          "Max=843263": "Min=102144"
+        },
+        "2026-02-14 12:07:01:596 1370 sec: 28073 operations; 22.8 current ops/sec; est completion in 42 minutes [READ: Count=144": {
+          "Max=537599": "Min=94016"
+        },
+        "2026-02-14 12:07:11:599 1380 sec: 28300 operations; 22.69 current ops/sec; est completion in 42 minutes [READ: Count=135": {
+          "Max=533503": "Min=95872"
+        },
+        "2026-02-14 12:07:21:601 1390 sec: 28522 operations; 22.2 current ops/sec; est completion in 41 minutes [READ: Count=131": {
+          "Max=692223": "Min=89408"
+        },
+        "2026-02-14 12:07:31:602 1400 sec: 28751 operations; 22.9 current ops/sec; est completion in 41 minutes [READ: Count=153": {
+          "Max=645631": "Min=90496"
+        },
+        "2026-02-14 12:07:41:601 1410 sec: 28953 operations; 20.2 current ops/sec; est completion in 41 minutes [READ: Count=121": {
+          "Max=834047": "Min=95040"
+        },
+        "2026-02-14 12:07:51:602 1420 sec: 29158 operations; 20.5 current ops/sec; est completion in 41 minutes [READ: Count=124": {
+          "Max=1062911": "Min=84928"
+        },
+        "2026-02-14 12:08:01:602 1430 sec: 29350 operations; 19.2 current ops/sec; est completion in 41 minutes [READ: Count=122": {
+          "Max=1512447": "Min=97536"
+        },
+        "2026-02-14 12:08:11:602 1440 sec: 29544 operations; 19.4 current ops/sec; est completion in 41 minutes [READ: Count=115": {
+          "Max=1680383": "Min=102912"
+        },
+        "2026-02-14 12:08:21:593 1449 sec: 29733 operations; 18.92 current ops/sec; est completion in 40 minutes [READ: Count=118": {
+          "Max=1609727": "Min=96384"
+        },
+        "2026-02-14 12:08:31:602 1460 sec: 29927 operations; 19.38 current ops/sec; est completion in 40 minutes [READ: Count=123": {
+          "Max=1628159": "Min=90496"
+        },
+        "2026-02-14 12:08:41:601 1470 sec: 30137 operations; 21 current ops/sec; est completion in 40 minutes [READ: Count=131": {
+          "Max=2273279": "Min=92288"
+        },
+        "2026-02-14 12:08:51:600 1480 sec: 30327 operations; 19 current ops/sec; est completion in 40 minutes [READ: Count=111": {
+          "Max=1797119": "Min=94144"
+        },
+        "2026-02-14 12:09:01:599 1490 sec: 30495 operations; 16.8 current ops/sec; est completion in 40 minutes [READ: Count=98": {
+          "Max=1512447": "Min=99648"
+        },
+        "2026-02-14 12:09:11:593 1499 sec: 30675 operations; 18.01 current ops/sec; est completion in 40 minutes [READ: Count=105": {
+          "Max=1637375": "Min=95936"
+        },
+        "2026-02-14 12:09:21:595 1510 sec: 30856 operations; 18.1 current ops/sec; est completion in 40 minutes [READ: Count=110": {
+          "Max=1360895": "Min=94272"
+        },
+        "2026-02-14 12:09:31:602 1520 sec: 31060 operations; 20.39 current ops/sec; est completion in 39 minutes [READ: Count=124": {
+          "Max=4313087": "Min=91776"
+        },
+        "2026-02-14 12:09:41:593 1529 sec: 31261 operations; 20.12 current ops/sec; est completion in 39 minutes [READ: Count=118": {
+          "Max=2379775": "Min=92352"
+        },
+        "2026-02-14 12:09:51:603 1540 sec: 31481 operations; 21.98 current ops/sec; est completion in 39 minutes [READ: Count=137": {
+          "Max=2539519": "Min=90048"
+        },
+        "2026-02-14 12:10:01:594 1549 sec: 31699 operations; 21.82 current ops/sec; est completion in 39 minutes [READ: Count=125": {
+          "Max=1175551": "Min=89600"
+        },
+        "2026-02-14 12:10:11:600 1560 sec: 31906 operations; 20.69 current ops/sec; est completion in 39 minutes [READ: Count=112": {
+          "Max=655871": "Min=93632"
+        },
+        "2026-02-14 12:10:21:594 1569 sec: 32124 operations; 21.82 current ops/sec; est completion in 39 minutes [READ: Count=129": {
+          "Max=1118207": "Min=91648"
+        },
+        "2026-02-14 12:10:31:599 1580 sec: 32339 operations; 21.49 current ops/sec; est completion in 38 minutes [READ: Count=120": {
+          "Max=1158143": "Min=95616"
+        },
+        "2026-02-14 12:10:41:601 1590 sec: 32579 operations; 24 current ops/sec; est completion in 38 minutes [READ: Count=132": {
+          "Max=827391": "Min=92096"
+        },
+        "2026-02-14 12:10:51:602 1600 sec: 32801 operations; 22.2 current ops/sec; est completion in 38 minutes [READ: Count=130": {
+          "Max=2240511": "Min=86976"
+        },
+        "2026-02-14 12:11:01:601 1610 sec: 33022 operations; 22.1 current ops/sec; est completion in 38 minutes [READ: Count=134": {
+          "Max=537087": "Min=92032"
+        },
+        "2026-02-14 12:11:11:603 1620 sec: 33229 operations; 20.7 current ops/sec; est completion in 38 minutes [READ: Count=118": {
+          "Max=948223": "Min=93056"
+        },
+        "2026-02-14 12:11:21:600 1630 sec: 33453 operations; 22.4 current ops/sec; est completion in 37 minutes [READ: Count=149": {
+          "Max=1078271": "Min=92544"
+        },
+        "2026-02-14 12:11:31:603 1640 sec: 33670 operations; 21.7 current ops/sec; est completion in 37 minutes [READ: Count=121": {
+          "Max=2664447": "Min=89984"
+        },
+        "2026-02-14 12:11:41:593 1649 sec: 33886 operations; 21.62 current ops/sec; est completion in 37 minutes [READ: Count=130": {
+          "Max=589823": "Min=93248"
+        },
+        "2026-02-14 12:11:51:593 1659 sec: 34107 operations; 22.1 current ops/sec; est completion in 37 minutes [READ: Count=126": {
+          "Max=731647": "Min=92672"
+        },
+        "2026-02-14 12:12:01:599 1670 sec: 34326 operations; 21.89 current ops/sec; est completion in 37 minutes [READ: Count=129": {
+          "Max=547327": "Min=92608"
+        },
+        "2026-02-14 12:12:11:598 1680 sec: 34545 operations; 21.9 current ops/sec; est completion in 36 minutes [READ: Count=145": {
+          "Max=782847": "Min=90496"
+        },
+        "2026-02-14 12:12:21:599 1690 sec: 34745 operations; 20 current ops/sec; est completion in 36 minutes [READ: Count=117": {
+          "Max=545791": "Min=96704"
+        },
+        "2026-02-14 12:12:31:593 1699 sec: 34950 operations; 20.51 current ops/sec; est completion in 36 minutes [READ: Count=113": {
+          "Max=1552383": "Min=95168"
+        },
+        "2026-02-14 12:12:41:593 1709 sec: 35160 operations; 21 current ops/sec; est completion in 36 minutes [READ: Count=126": {
+          "Max=995327": "Min=94016"
+        },
+        "2026-02-14 12:12:51:598 1720 sec: 35369 operations; 20.89 current ops/sec; est completion in 36 minutes [READ: Count=142": {
+          "Max=1876991": "Min=101952"
+        },
+        "2026-02-14 12:13:01:592 1729 sec: 35582 operations; 21.31 current ops/sec; est completion in 36 minutes [READ: Count=121": {
+          "Max=637439": "Min=104064"
+        },
+        "2026-02-14 12:13:11:602 1740 sec: 35801 operations; 21.88 current ops/sec; est completion in 35 minutes [READ: Count=143": {
+          "Max=562175": "Min=99520"
+        },
+        "2026-02-14 12:13:21:592 1749 sec: 36034 operations; 23.32 current ops/sec; est completion in 35 minutes [READ: Count=144": {
+          "Max=1332223": "Min=92224"
+        },
+        "2026-02-14 12:13:31:602 1760 sec: 36246 operations; 21.18 current ops/sec; est completion in 35 minutes [READ: Count=132": {
+          "Max=676351": "Min=96704"
+        },
+        "2026-02-14 12:13:41:602 1770 sec: 36473 operations; 22.7 current ops/sec; est completion in 35 minutes [READ: Count=147": {
+          "Max=560639": "Min=96128"
+        },
+        "2026-02-14 12:13:51:593 1779 sec: 36688 operations; 21.52 current ops/sec; est completion in 35 minutes [READ: Count=114": {
+          "Max=360703": "Min=104448"
+        },
+        "2026-02-14 12:14:01:594 1789 sec: 36898 operations; 21 current ops/sec; est completion in 34 minutes [READ: Count=112": {
+          "Max=1233919": "Min=92864"
+        },
+        "2026-02-14 12:14:11:602 1800 sec: 37100 operations; 20.18 current ops/sec; est completion in 34 minutes [READ: Count=127": {
+          "Max=1715199": "Min=104896"
+        },
+        "2026-02-14 12:14:21:597 1810 sec: 37312 operations; 21.21 current ops/sec; est completion in 34 minutes [READ: Count=134": {
+          "Max=1191935": "Min=102656"
+        },
+        "2026-02-14 12:14:31:594 1819 sec: 37525 operations; 21.31 current ops/sec; est completion in 34 minutes [READ: Count=126": {
+          "Max=2910207": "Min=90112"
+        },
+        "2026-02-14 12:14:41:601 1830 sec: 37737 operations; 21.19 current ops/sec; est completion in 34 minutes [READ: Count=121": {
+          "Max=1090559": "Min=98624"
+        },
+        "2026-02-14 12:14:51:592 1839 sec: 37955 operations; 21.82 current ops/sec; est completion in 33 minutes [READ: Count=151": {
+          "Max=2430975": "Min=98304"
+        },
+        "2026-02-14 12:15:01:594 1849 sec: 38169 operations; 21.4 current ops/sec; est completion in 33 minutes [READ: Count=130": {
+          "Max=1140735": "Min=96640"
+        },
+        "2026-02-14 12:15:11:594 1859 sec: 38390 operations; 22.1 current ops/sec; est completion in 33 minutes [READ: Count=130": {
+          "Max=972799": "Min=104064"
+        },
+        "2026-02-14 12:15:21:602 1870 sec: 38615 operations; 22.48 current ops/sec; est completion in 33 minutes [READ: Count=133": {
+          "Max=860159": "Min=96064"
+        },
+        "2026-02-14 12:15:31:602 1880 sec: 38817 operations; 20.2 current ops/sec; est completion in 33 minutes [READ: Count=108": {
+          "Max=2641919": "Min=95424"
+        },
+        "2026-02-14 12:15:41:592 1889 sec: 39054 operations; 23.72 current ops/sec; est completion in 33 minutes [READ: Count=139": {
+          "Max=713215": "Min=98048"
+        },
+        "2026-02-14 12:15:51:599 1900 sec: 39274 operations; 21.98 current ops/sec; est completion in 32 minutes [READ: Count=121": {
+          "Max=1034751": "Min=90048"
+        },
+        "2026-02-14 12:16:01:600 1910 sec: 39501 operations; 22.7 current ops/sec; est completion in 32 minutes [READ: Count=147": {
+          "Max=1394687": "Min=87872"
+        },
+        "2026-02-14 12:16:11:602 1920 sec: 39700 operations; 19.9 current ops/sec; est completion in 32 minutes [READ: Count=121": {
+          "Max=2486271": "Min=96640"
+        },
+        "2026-02-14 12:16:21:602 1930 sec: 39914 operations; 21.4 current ops/sec; est completion in 32 minutes [READ: Count=132": {
+          "Max=1151999": "Min=100992"
+        },
+        "2026-02-14 12:16:31:597 1940 sec: 40129 operations; 21.51 current ops/sec; est completion in 32 minutes [READ: Count=127": {
+          "Max=1985535": "Min=90176"
+        },
+        "2026-02-14 12:16:41:594 1949 sec: 40349 operations; 22.01 current ops/sec; est completion in 31 minutes [READ: Count=139": {
+          "Max=1289215": "Min=93056"
+        },
+        "2026-02-14 12:16:51:600 1960 sec: 40557 operations; 20.79 current ops/sec; est completion in 31 minutes [READ: Count=139": {
+          "Max=864255": "Min=92544"
+        },
+        "2026-02-14 12:17:01:593 1969 sec: 40770 operations; 21.31 current ops/sec; est completion in 31 minutes [READ: Count=139": {
+          "Max=1320959": "Min=91200"
+        },
+        "2026-02-14 12:17:11:594 1979 sec: 40988 operations; 21.8 current ops/sec; est completion in 31 minutes [READ: Count=137": {
+          "Max=1272831": "Min=93952"
+        },
+        "2026-02-14 12:17:21:601 1990 sec: 41213 operations; 22.48 current ops/sec; est completion in 31 minutes [READ: Count=134": {
+          "Max=2267135": "Min=85824"
+        },
+        "2026-02-14 12:17:31:593 1999 sec: 41429 operations; 21.62 current ops/sec; est completion in 31 minutes [READ: Count=130": {
+          "Max=1320959": "Min=90688"
+        },
+        "2026-02-14 12:17:41:592 2009 sec: 41615 operations; 18.6 current ops/sec; est completion in 30 minutes [READ: Count=119": {
+          "Max=1436671": "Min=83648"
+        },
+        "2026-02-14 12:17:51:594 2019 sec: 41797 operations; 18.19 current ops/sec; est completion in 30 minutes [READ: Count=117": {
+          "Max=1261567": "Min=86784"
+        },
+        "2026-02-14 12:18:01:592 2029 sec: 41981 operations; 18.41 current ops/sec; est completion in 30 minutes [READ: Count=104": {
+          "Max=2093055": "Min=93696"
+        },
+        "2026-02-14 12:18:11:592 2039 sec: 42189 operations; 20.8 current ops/sec; est completion in 30 minutes [READ: Count=128": {
+          "Max=1102847": "Min=87168"
+        },
+        "2026-02-14 12:18:21:601 2050 sec: 42396 operations; 20.68 current ops/sec; est completion in 30 minutes [READ: Count=108": {
+          "Max=1235967": "Min=88832"
+        },
+        "2026-02-14 12:18:31:600 2060 sec: 42610 operations; 21.4 current ops/sec; est completion in 30 minutes [READ: Count=124": {
+          "Max=1158143": "Min=84928"
+        },
+        "2026-02-14 12:18:41:601 2070 sec: 42826 operations; 21.6 current ops/sec; est completion in 29 minutes [READ: Count=138": {
+          "Max=2768895": "Min=84160"
+        },
+        "2026-02-14 12:18:51:599 2080 sec: 43027 operations; 20.1 current ops/sec; est completion in 29 minutes [READ: Count=123": {
+          "Max=2699263": "Min=89728"
+        },
+        "2026-02-14 12:19:01:601 2090 sec: 43244 operations; 21.7 current ops/sec; est completion in 29 minutes [READ: Count=133": {
+          "Max=726527": "Min=89600"
+        },
+        "2026-02-14 12:19:11:598 2100 sec: 43463 operations; 21.91 current ops/sec; est completion in 29 minutes [READ: Count=135": {
+          "Max=1463295": "Min=85376"
+        },
+        "2026-02-14 12:19:21:601 2110 sec: 43684 operations; 22.09 current ops/sec; est completion in 29 minutes [READ: Count=143": {
+          "Max=563199": "Min=86848"
+        },
+        "2026-02-14 12:19:31:601 2120 sec: 43910 operations; 22.6 current ops/sec; est completion in 29 minutes [READ: Count=132": {
+          "Max=1535999": "Min=88576"
+        },
+        "2026-02-14 12:19:41:601 2130 sec: 44128 operations; 21.8 current ops/sec; est completion in 28 minutes [READ: Count=138": {
+          "Max=1097727": "Min=85056"
+        },
+        "2026-02-14 12:19:51:601 2140 sec: 44363 operations; 23.5 current ops/sec; est completion in 28 minutes [READ: Count=139": {
+          "Max=517887": "Min=85248"
+        },
+        "2026-02-14 12:20:01:601 2150 sec: 44607 operations; 24.4 current ops/sec; est completion in 28 minutes [READ: Count=158": {
+          "Max=667135": "Min=81536"
+        },
+        "2026-02-14 12:20:11:598 2160 sec: 44809 operations; 20.21 current ops/sec; est completion in 28 minutes [READ: Count=112": {
+          "Max=544767": "Min=95168"
+        },
+        "2026-02-14 12:20:21:597 2170 sec: 45038 operations; 22.9 current ops/sec; est completion in 28 minutes [READ: Count=145": {
+          "Max=502271": "Min=93824"
+        },
+        "2026-02-14 12:20:31:601 2180 sec: 45237 operations; 19.89 current ops/sec; est completion in 27 minutes [READ: Count=117": {
+          "Max=778751": "Min=92544"
+        },
+        "2026-02-14 12:20:41:595 2190 sec: 45431 operations; 19.41 current ops/sec; est completion in 27 minutes [READ: Count=117": {
+          "Max=522495": "Min=90688"
+        },
+        "2026-02-14 12:20:51:598 2200 sec: 45659 operations; 22.79 current ops/sec; est completion in 27 minutes [READ: Count=142": {
+          "Max=1791999": "Min=85120"
+        },
+        "2026-02-14 12:21:01:593 2209 sec: 45877 operations; 21.81 current ops/sec; est completion in 27 minutes [READ: Count=110": {
+          "Max=530943": "Min=87360"
+        },
+        "2026-02-14 12:21:11:601 2220 sec: 46094 operations; 21.68 current ops/sec; est completion in 27 minutes [READ: Count=131": {
+          "Max=543743": "Min=88576"
+        },
+        "2026-02-14 12:21:21:593 2229 sec: 46316 operations; 22.22 current ops/sec; est completion in 27 minutes [READ: Count=135": {
+          "Max=540159": "Min=87680"
+        },
+        "2026-02-14 12:21:31:599 2240 sec: 46529 operations; 21.29 current ops/sec; est completion in 26 minutes [READ: Count=130": {
+          "Max=1156095": "Min=83712"
+        },
+        "2026-02-14 12:21:41:597 2250 sec: 46726 operations; 19.7 current ops/sec; est completion in 26 minutes [READ: Count=122": {
+          "Max=1150975": "Min=95040"
+        },
+        "2026-02-14 12:21:51:599 2260 sec: 46942 operations; 21.6 current ops/sec; est completion in 26 minutes [READ: Count=143": {
+          "Max=1484799": "Min=89664"
+        },
+        "2026-02-14 12:22:01:598 2270 sec: 47157 operations; 21.5 current ops/sec; est completion in 26 minutes [READ: Count=120": {
+          "Max=2826239": "Min=89024"
+        },
+        "2026-02-14 12:22:11:597 2280 sec: 47371 operations; 21.4 current ops/sec; est completion in 26 minutes [READ: Count=125": {
+          "Max=921087": "Min=90112"
+        },
+        "2026-02-14 12:22:21:597 2290 sec: 47582 operations; 21.1 current ops/sec; est completion in 26 minutes [READ: Count=142": {
+          "Max=1222655": "Min=87168"
+        },
+        "2026-02-14 12:22:31:599 2300 sec: 47769 operations; 18.7 current ops/sec; est completion in 25 minutes [READ: Count=110": {
+          "Max=1822719": "Min=88704"
+        },
+        "2026-02-14 12:22:41:597 2310 sec: 47972 operations; 20.3 current ops/sec; est completion in 25 minutes [READ: Count=114": {
+          "Max=1155071": "Min=92224"
+        },
+        "2026-02-14 12:22:51:601 2320 sec: 48168 operations; 19.59 current ops/sec; est completion in 25 minutes [READ: Count=109": {
+          "Max=1634303": "Min=90112"
+        },
+        "2026-02-14 12:23:01:596 2330 sec: 48371 operations; 20.31 current ops/sec; est completion in 25 minutes [READ: Count=123": {
+          "Max=1847295": "Min=95616"
+        },
+        "2026-02-14 12:23:11:591 2339 sec: 48572 operations; 20.11 current ops/sec; est completion in 25 minutes [READ: Count=125": {
+          "Max=1498111": "Min=94848"
+        },
+        "2026-02-14 12:23:21:594 2349 sec: 48765 operations; 19.29 current ops/sec; est completion in 25 minutes [READ: Count=118": {
+          "Max=1079295": "Min=105152"
+        },
+        "2026-02-14 12:23:31:600 2360 sec: 48961 operations; 19.59 current ops/sec; est completion in 24 minutes [READ: Count=128": {
+          "Max=1452031": "Min=98624"
+        },
+        "2026-02-14 12:23:41:600 2370 sec: 49162 operations; 20.1 current ops/sec; est completion in 24 minutes [READ: Count=136": {
+          "Max=1297407": "Min=98496"
+        },
+        "2026-02-14 12:23:51:600 2380 sec: 49366 operations; 20.4 current ops/sec; est completion in 24 minutes [READ: Count=131": {
+          "Max=2822143": "Min=100352"
+        },
+        "2026-02-14 12:24:01:600 2390 sec: 49574 operations; 20.8 current ops/sec; est completion in 24 minutes [READ: Count=121": {
+          "Max=1905663": "Min=104256"
+        },
+        "2026-02-14 12:24:11:600 2400 sec: 49794 operations; 22 current ops/sec; est completion in 24 minutes [READ: Count=135": {
+          "Max=1367039": "Min=104512"
+        },
+        "2026-02-14 12:24:21:600 2410 sec: 49993 operations; 19.9 current ops/sec; est completion in 24 minutes [READ: Count=117": {
+          "Max=2807807": "Min=105472"
+        },
+        "2026-02-14 12:24:31:596 2420 sec: 50200 operations; 20.71 current ops/sec; est completion in 23 minutes [READ: Count=128": {
+          "Max=1283071": "Min=94912"
+        },
+        "2026-02-14 12:24:41:590 2429 sec: 50435 operations; 23.51 current ops/sec; est completion in 23 minutes [READ: Count=149": {
+          "Max=792063": "Min=95552"
+        },
+        "2026-02-14 12:24:51:591 2439 sec: 50666 operations; 23.1 current ops/sec; est completion in 23 minutes [READ: Count=130": {
+          "Max=1246207": "Min=95360"
+        },
+        "2026-02-14 12:25:01:600 2450 sec: 50895 operations; 22.88 current ops/sec; est completion in 23 minutes [READ: Count=134": {
+          "Max=725503": "Min=96256"
+        },
+        "2026-02-14 12:25:11:598 2460 sec: 51118 operations; 22.3 current ops/sec; est completion in 23 minutes [READ: Count=131": {
+          "Max=541183": "Min=98432"
+        },
+        "2026-02-14 12:25:21:590 2469 sec: 51344 operations; 22.62 current ops/sec; est completion in 22 minutes [READ: Count=131": {
+          "Max=535551": "Min=94528"
+        },
+        "2026-02-14 12:25:31:600 2480 sec: 51563 operations; 21.88 current ops/sec; est completion in 22 minutes [READ: Count=122": {
+          "Max=519935": "Min=95744"
+        },
+        "2026-02-14 12:25:41:600 2490 sec: 51785 operations; 22.2 current ops/sec; est completion in 22 minutes [READ: Count=145": {
+          "Max=506367": "Min=95616"
+        },
+        "2026-02-14 12:25:51:591 2499 sec: 52011 operations; 22.62 current ops/sec; est completion in 22 minutes [READ: Count=143": {
+          "Max=1117183": "Min=97152"
+        },
+        "2026-02-14 12:26:01:590 2509 sec: 52239 operations; 22.8 current ops/sec; est completion in 22 minutes [READ: Count=132": {
+          "Max=343807": "Min=92096"
+        },
+        "2026-02-14 12:26:11:598 2520 sec: 52465 operations; 22.58 current ops/sec; est completion in 22 minutes [READ: Count=132": {
+          "Max=886271": "Min=100736"
+        },
+        "2026-02-14 12:26:21:600 2530 sec: 52679 operations; 21.39 current ops/sec; est completion in 21 minutes [READ: Count=125": {
+          "Max=1183743": "Min=91648"
+        },
+        "2026-02-14 12:26:31:600 2540 sec: 52903 operations; 22.4 current ops/sec; est completion in 21 minutes [READ: Count=132": {
+          "Max=1880063": "Min=92608"
+        },
+        "2026-02-14 12:26:41:600 2550 sec: 53106 operations; 20.3 current ops/sec; est completion in 21 minutes [READ: Count=112": {
+          "Max=1078271": "Min=95104"
+        },
+        "2026-02-14 12:26:51:600 2560 sec: 53322 operations; 21.6 current ops/sec; est completion in 21 minutes [READ: Count=140": {
+          "Max=880639": "Min=91584"
+        },
+        "2026-02-14 12:27:01:594 2569 sec: 53529 operations; 20.71 current ops/sec; est completion in 21 minutes [READ: Count=123": {
+          "Max=2592767": "Min=92224"
+        },
+        "2026-02-14 12:27:11:600 2580 sec: 53729 operations; 19.99 current ops/sec; est completion in 21 minutes [READ: Count=130": {
+          "Max=1230847": "Min=99584"
+        },
+        "2026-02-14 12:27:21:591 2589 sec: 53936 operations; 20.72 current ops/sec; est completion in 20 minutes [READ: Count=127": {
+          "Max=1097727": "Min=94336"
+        },
+        "2026-02-14 12:27:31:600 2600 sec: 54145 operations; 20.88 current ops/sec; est completion in 20 minutes [READ: Count=135": {
+          "Max=1339391": "Min=86208"
+        },
+        "2026-02-14 12:27:41:591 2609 sec: 54358 operations; 21.32 current ops/sec; est completion in 20 minutes [READ: Count=132": {
+          "Max=546303": "Min=88896"
+        },
+        "2026-02-14 12:27:51:593 2619 sec: 54555 operations; 19.7 current ops/sec; est completion in 20 minutes [READ: Count=117": {
+          "Max=2656255": "Min=92160"
+        },
+        "2026-02-14 12:28:01:600 2630 sec: 54743 operations; 18.79 current ops/sec; est completion in 20 minutes [READ: Count=109": {
+          "Max=1777663": "Min=86400"
+        },
+        "2026-02-14 12:28:11:590 2639 sec: 54932 operations; 18.92 current ops/sec; est completion in 20 minutes [READ: Count=108": {
+          "Max=1586175": "Min=91264"
+        },
+        "2026-02-14 12:28:21:592 2649 sec: 55142 operations; 21 current ops/sec; est completion in 19 minutes [READ: Count=130": {
+          "Max=1305599": "Min=83904"
+        },
+        "2026-02-14 12:28:31:597 2660 sec: 55344 operations; 20.19 current ops/sec; est completion in 19 minutes [READ: Count=132": {
+          "Max=4184063": "Min=88256"
+        },
+        "2026-02-14 12:28:41:594 2669 sec: 55573 operations; 22.91 current ops/sec; est completion in 19 minutes [READ: Count=143": {
+          "Max=815103": "Min=83136"
+        },
+        "2026-02-14 12:28:51:600 2680 sec: 55785 operations; 21.19 current ops/sec; est completion in 19 minutes [READ: Count=129": {
+          "Max=965119": "Min=89152"
+        },
+        "2026-02-14 12:29:01:596 2690 sec: 56006 operations; 22.11 current ops/sec; est completion in 19 minutes [READ: Count=126": {
+          "Max=2076671": "Min=90240"
+        },
+        "2026-02-14 12:29:11:599 2700 sec: 56201 operations; 19.49 current ops/sec; est completion in 19 minutes [READ: Count=114": {
+          "Max=2885631": "Min=91904"
+        },
+        "2026-02-14 12:29:21:595 2710 sec: 56420 operations; 21.91 current ops/sec; est completion in 18 minutes [READ: Count=129": {
+          "Max=526847": "Min=99392"
+        },
+        "2026-02-14 12:29:31:599 2720 sec: 56633 operations; 21.29 current ops/sec; est completion in 18 minutes [READ: Count=127": {
+          "Max=1486847": "Min=95040"
+        },
+        "2026-02-14 12:29:41:600 2730 sec: 56859 operations; 22.6 current ops/sec; est completion in 18 minutes [READ: Count=141": {
+          "Max=814591": "Min=88640"
+        },
+        "2026-02-14 12:29:51:597 2740 sec: 57097 operations; 23.8 current ops/sec; est completion in 18 minutes [READ: Count=141": {
+          "Max=532479": "Min=87296"
+        },
+        "2026-02-14 12:30:01:590 2749 sec: 57331 operations; 23.42 current ops/sec; est completion in 18 minutes [READ: Count=132": {
+          "Max=639487": "Min=95872"
+        },
+        "2026-02-14 12:30:11:599 2760 sec: 57522 operations; 19.08 current ops/sec; est completion in 17 minutes [READ: Count=127": {
+          "Max=2105343": "Min=97728"
+        },
+        "2026-02-14 12:45:21:423 3669 sec: 57704 operations; 0.2 current ops/sec; est completion in 23 minutes [READ: Count=108": {
+          "Max=2482175": "Min=100224"
+        },
+        "2026-02-14 12:45:31:427 3679 sec: 57715 operations; 1.1 current ops/sec; est completion in 23 minutes [READ: Count=7": {
+          "Max=2779135": "Min=125440"
+        },
+        "2026-02-14 12:45:41:421 3689 sec: 57727 operations; 1.2 current ops/sec; est completion in 23 minutes [READ: Count=8": {
+          "Max=1071103": "Min=369408"
+        },
+        "2026-02-14 13:00:51:294 4599 sec: 57759 operations; 0.04 current ops/sec; est completion in 29 minutes [READ: Count=20": {
+          "Max=28295167": "Min=388096"
+        },
+        "2026-02-14 13:01:01:292 4609 sec: 57869 operations; 11 current ops/sec; est completion in 29 minutes [READ: Count=67": {
+          "Max=1444863": "Min=119360"
+        },
+        "2026-02-14 13:16:11:174 5519 sec: 57942 operations; 0.08 current ops/sec; est completion in 35 minutes [READ: Count=44": {
+          "Max=2836479": "Min=126080"
+        },
+        "2026-02-14 13:16:21:166 5529 sec: 58001 operations; 5.9 current ops/sec; est completion in 34 minutes [READ: Count=32": {
+          "Max=1969151": "Min=210048"
+        },
+        "2026-02-14 13:31:31:052 6439 sec: 58062 operations; 0.07 current ops/sec; est completion in 40 minutes [READ: Count=35": {
+          "Max=22642687": "Min=103936"
+        },
+        "2026-02-14 13:31:41:049 6449 sec: 58100 operations; 3.8 current ops/sec; est completion in 40 minutes [READ: Count=24": {
+          "Max=2537471": "Min=506624"
+        },
+        "2026-02-14 13:31:51:044 6459 sec: 58153 operations; 5.3 current ops/sec; est completion in 40 minutes [READ: Count=29": {
+          "Max=1776639": "Min=132224"
+        },
+        "2026-02-14 13:47:00:913 7369 sec: 58165 operations; 0.01 current ops/sec; est completion in 46 minutes [READ: Count=5": {
+          "Max=1202175": "Min=328960"
+        },
+        "2026-02-14 13:47:10:918 7379 sec: 58195 operations; 3 current ops/sec; est completion in 46 minutes [READ: Count=17": {
+          "Max=41648127": "Min=132608"
+        },
+        "2026-02-14 13:51:22:391 7630 sec: 58240 operations; 0.18 current ops/sec; est completion in 47 minutes [READ: Count=23": {
+          "Max=1183743": "Min=176256"
+        },
+        "2026-02-14 14:06:55:468 8563 sec: 58240 operations; 0 current ops/sec; est completion in 53 minutes [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "2026-02-14 14:26:09:139 9717 sec: 58240 operations; 0 current ops/sec; est completion in 1 hour [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "2026-02-14 15:27:08:231 13376 sec: 58240 operations; 0 current ops/sec; est completion in 1 hour 23 minutes [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "2026-02-14 16:28:05:718 17034 sec: 58240 operations; 0 current ops/sec; est completion in 1 hour 46 minutes [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "2026-02-14 16:59:19:276 18907 sec: 58261 operations; 0.01 current ops/sec; est completion in 1 hour 57 minutes [READ: Count=15": {
+          "Max=52822015": "Min=404992"
+        },
+        "2026-02-14 16:59:29:277 18917 sec: 58261 operations; 0 current ops/sec; est completion in 1 hour 57 minutes [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "2026-02-14 17:13:38:083 19766 sec: 58261 operations; 0 current ops/sec; est completion in 2 hours 2 minutes [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "2026-02-14 17:13:48:093 19776 sec: 58261 operations; 0 current ops/sec; est completion in 2 hours 3 minutes [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "2026-02-14 17:13:58:087 19786 sec: 58261 operations; 0 current ops/sec; est completion in 2 hours 3 minutes [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "2026-02-14 17:14:08:085 19796 sec: 58287 operations; 2.6 current ops/sec; est completion in 2 hours 2 minutes [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "2026-02-14 17:14:18:082 19806 sec: 73300 operations; 1501.9 current ops/sec; est completion in 30 minutes [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "2026-02-14 17:14:19:149 19807 sec: 80000 operations; 6273.41 current ops/sec; [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "OVERALL": {
+          "RunTime(ms)": 19807554.0,
+          "Throughput(ops/sec)": 4.038863152916306
+        },
+        "TOTAL_GCS_G1_Young_Generation": {
+          "Count": 81.0
+        },
+        "TOTAL_GC_TIME_G1_Young_Generation": {
+          "Time(ms)": 93.0
+        },
+        "TOTAL_GC_TIME_%_G1_Young_Generation": {
+          "Time(%)": 0.00046951784152652064
+        },
+        "TOTAL_GCS_G1_Concurrent_GC": {
+          "Count": 2.0
+        },
+        "TOTAL_GC_TIME_G1_Concurrent_GC": {
+          "Time(ms)": 1.0
+        },
+        "TOTAL_GC_TIME_%_G1_Concurrent_GC": {
+          "Time(%)": 5.048578941145383e-06
+        },
+        "TOTAL_GCS_G1_Old_Generation": {
+          "Count": 0.0
+        },
+        "TOTAL_GC_TIME_G1_Old_Generation": {
+          "Time(ms)": 0.0
+        },
+        "TOTAL_GC_TIME_%_G1_Old_Generation": {
+          "Time(%)": 0.0
+        },
+        "TOTAL_GCs": {
+          "Count": 83.0
+        },
+        "TOTAL_GC_TIME": {
+          "Time(ms)": 94.0
+        },
+        "TOTAL_GC_TIME_%": {
+          "Time(%)": 0.000474566420467666
+        },
+        "READ": {
+          "Operations": 34999.0,
+          "AverageLatency(us)": 270402.48692819796,
+          "MinLatency(us)": 81536.0,
+          "MaxLatency(us)": 52822015.0,
+          "50thPercentileLatency(us)": 263935.0,
+          "90thPercentileLatency(us)": 383231.0,
+          "95thPercentileLatency(us)": 520703.0,
+          "99thPercentileLatency(us)": 1087487.0,
+          "99.9PercentileLatency(us)": 2693119.0,
+          "Return=OK": 34999.0,
+          "Return=CLIENT_ERROR": 13063.0
+        },
+        "UPDATE-FAILED": {
+          "Operations": 5443.0,
+          "AverageLatency(us)": 12328.00643027742,
+          "MinLatency(us)": 28.0,
+          "MaxLatency(us)": 50462719.0,
+          "50thPercentileLatency(us)": 37.0,
+          "90thPercentileLatency(us)": 48.0,
+          "95thPercentileLatency(us)": 68.0,
+          "99thPercentileLatency(us)": 693.0,
+          "99.9PercentileLatency(us)": 533503.0
+        },
+        "CLEANUP": {
+          "Operations": 6.0,
+          "AverageLatency(us)": 0.5,
+          "MinLatency(us)": 0.0,
+          "MaxLatency(us)": 2.0,
+          "50thPercentileLatency(us)": 0.0,
+          "90thPercentileLatency(us)": 2.0,
+          "95thPercentileLatency(us)": 2.0,
+          "99thPercentileLatency(us)": 2.0,
+          "99.9PercentileLatency(us)": 2.0
+        },
+        "INSERT": {
+          "Operations": 8758.0,
+          "AverageLatency(us)": 351638.7814569537,
+          "MinLatency(us)": 105600.0,
+          "MaxLatency(us)": 51937279.0,
+          "50thPercentileLatency(us)": 314623.0,
+          "90thPercentileLatency(us)": 513791.0,
+          "95thPercentileLatency(us)": 565759.0,
+          "99thPercentileLatency(us)": 710143.0,
+          "99.9PercentileLatency(us)": 1827839.0,
+          "Return=OK": 8758.0,
+          "Return=CLIENT_ERROR": 3233.0
+        },
+        "UPDATE": {
+          "Operations": 14504.0,
+          "AverageLatency(us)": 350357.57528957527,
+          "MinLatency(us)": 107776.0,
+          "MaxLatency(us)": 51871743.0,
+          "50thPercentileLatency(us)": 310527.0,
+          "90thPercentileLatency(us)": 506111.0,
+          "95thPercentileLatency(us)": 561151.0,
+          "99thPercentileLatency(us)": 694783.0,
+          "99.9PercentileLatency(us)": 1889279.0,
+          "Return=OK": 14504.0,
+          "Return=CLIENT_ERROR": 5443.0
+        },
+        "READ-FAILED": {
+          "Operations": 13063.0,
+          "AverageLatency(us)": 14383.555921304447,
+          "MinLatency(us)": 26.0,
+          "MaxLatency(us)": 50429951.0,
+          "50thPercentileLatency(us)": 35.0,
+          "90thPercentileLatency(us)": 45.0,
+          "95thPercentileLatency(us)": 62.0,
+          "99thPercentileLatency(us)": 664.0,
+          "99.9PercentileLatency(us)": 503807.0
+        },
+        "INSERT-FAILED": {
+          "Operations": 3233.0,
+          "AverageLatency(us)": 35322.54036498608,
+          "MinLatency(us)": 33.0,
+          "MaxLatency(us)": 50429951.0,
+          "50thPercentileLatency(us)": 42.0,
+          "90thPercentileLatency(us)": 53.0,
+          "95thPercentileLatency(us)": 75.0,
+          "99thPercentileLatency(us)": 237823.0,
+          "99.9PercentileLatency(us)": 553983.0
+        }
+      },
+      "config": {
+        "workload": "site.ycsb.workloads.CoreWorkload",
+        "recordcount": "20000",
+        "operationcount": "80000",
+        "readallfields": "true",
+        "readproportion": "0.6",
+        "updateproportion": "0.25",
+        "insertproportion": "0.15",
+        "scanproportion": "0",
+        "requestdistribution": "latest",
+        "db": "site.ycsb.db.DynamoDBClient",
+        "dynamodb.endpoint": "http://localhost:8787",
+        "threadcount": "6",
+        "measurementtype": "hdrhistogram",
+        "hdrhistogram.percentiles": "50,90,95,99,99.9"
+      },
+      "raw_file": "run_variant_b_20260214_105651.txt"
+    },
+    {
+      "variant": "Concurrency Scaling",
+      "metrics": {
+        "2026-02-14 17:14:31:291 10 sec: 102 operations; 10.19 current ops/sec; est completion in 1 hour 37 minutes [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "2026-02-14 17:14:35:042 13 sec: 60000 operations; 15972.8 current ops/sec; [READ: Count=0": {
+          "Max=0": "Min=0"
+        },
+        "OVERALL": {
+          "RunTime(ms)": 13755.0,
+          "Throughput(ops/sec)": 4362.0501635768815
+        },
+        "TOTAL_GCS_G1_Young_Generation": {
+          "Count": 18.0
+        },
+        "TOTAL_GC_TIME_G1_Young_Generation": {
+          "Time(ms)": 52.0
+        },
+        "TOTAL_GC_TIME_%_G1_Young_Generation": {
+          "Time(%)": 0.3780443475099964
+        },
+        "TOTAL_GCS_G1_Concurrent_GC": {
+          "Count": 0.0
+        },
+        "TOTAL_GC_TIME_G1_Concurrent_GC": {
+          "Time(ms)": 0.0
+        },
+        "TOTAL_GC_TIME_%_G1_Concurrent_GC": {
+          "Time(%)": 0.0
+        },
+        "TOTAL_GCS_G1_Old_Generation": {
+          "Count": 0.0
+        },
+        "TOTAL_GC_TIME_G1_Old_Generation": {
+          "Time(ms)": 0.0
+        },
+        "TOTAL_GC_TIME_%_G1_Old_Generation": {
+          "Time(%)": 0.0
+        },
+        "TOTAL_GCs": {
+          "Count": 18.0
+        },
+        "TOTAL_GC_TIME": {
+          "Time(ms)": 52.0
+        },
+        "TOTAL_GC_TIME_%": {
+          "Time(%)": 0.3780443475099964
+        },
+        "READ": {
+          "Operations": 0.0,
+          "AverageLatency(us)": 0.0,
+          "MinLatency(us)": 0.0,
+          "MaxLatency(us)": 0.0,
+          "50thPercentileLatency(us)": 0.0,
+          "90thPercentileLatency(us)": 0.0,
+          "95thPercentileLatency(us)": 0.0,
+          "99thPercentileLatency(us)": 0.0,
+          "99.9PercentileLatency(us)": 0.0,
+          "Return=CLIENT_ERROR": 47982.0
+        },
+        "UPDATE-FAILED": {
+          "Operations": 8943.0,
+          "AverageLatency(us)": 735.0751425696075,
+          "MinLatency(us)": 37.0,
+          "MaxLatency(us)": 473087.0,
+          "50thPercentileLatency(us)": 83.0,
+          "90thPercentileLatency(us)": 112.0,
+          "95thPercentileLatency(us)": 136.0,
+          "99thPercentileLatency(us)": 199.0,
+          "99.9PercentileLatency(us)": 285695.0
+        },
+        "CLEANUP": {
+          "Operations": 4.0,
+          "AverageLatency(us)": 0.25,
+          "MinLatency(us)": 0.0,
+          "MaxLatency(us)": 1.0,
+          "50thPercentileLatency(us)": 0.0,
+          "90thPercentileLatency(us)": 1.0,
+          "95thPercentileLatency(us)": 1.0,
+          "99thPercentileLatency(us)": 1.0,
+          "99.9PercentileLatency(us)": 1.0
+        },
+        "READ-FAILED": {
+          "Operations": 47982.0,
+          "AverageLatency(us)": 902.9292859822433,
+          "MinLatency(us)": 35.0,
+          "MaxLatency(us)": 624639.0,
+          "50thPercentileLatency(us)": 80.0,
+          "90thPercentileLatency(us)": 108.0,
+          "95thPercentileLatency(us)": 128.0,
+          "99thPercentileLatency(us)": 203.0,
+          "99.9PercentileLatency(us)": 390655.0
+        },
+        "INSERT": {
+          "Operations": 0.0,
+          "AverageLatency(us)": 0.0,
+          "MinLatency(us)": 0.0,
+          "MaxLatency(us)": 0.0,
+          "50thPercentileLatency(us)": 0.0,
+          "90thPercentileLatency(us)": 0.0,
+          "95thPercentileLatency(us)": 0.0,
+          "99thPercentileLatency(us)": 0.0,
+          "99.9PercentileLatency(us)": 0.0,
+          "Return=CLIENT_ERROR": 3075.0
+        },
+        "UPDATE": {
+          "Operations": 0.0,
+          "AverageLatency(us)": 0.0,
+          "MinLatency(us)": 0.0,
+          "MaxLatency(us)": 0.0,
+          "50thPercentileLatency(us)": 0.0,
+          "90thPercentileLatency(us)": 0.0,
+          "95thPercentileLatency(us)": 0.0,
+          "99thPercentileLatency(us)": 0.0,
+          "99.9PercentileLatency(us)": 0.0,
+          "Return=CLIENT_ERROR": 8943.0
+        },
+        "INSERT-FAILED": {
+          "Operations": 3075.0,
+          "AverageLatency(us)": 944.030243902439,
+          "MinLatency(us)": 44.0,
+          "MaxLatency(us)": 540671.0,
+          "50thPercentileLatency(us)": 96.0,
+          "90thPercentileLatency(us)": 130.0,
+          "95thPercentileLatency(us)": 156.0,
+          "99thPercentileLatency(us)": 260.0,
+          "99.9PercentileLatency(us)": 516607.0
+        }
+      },
+      "config": {
+        "workload": "site.ycsb.workloads.CoreWorkload",
+        "recordcount": "15000",
+        "operationcount": "60000",
+        "readallfields": "true",
+        "readproportion": "0.8",
+        "updateproportion": "0.15",
+        "insertproportion": "0.05",
+        "scanproportion": "0",
+        "requestdistribution": "uniform",
+        "db": "site.ycsb.db.DynamoDBClient",
+        "dynamodb.endpoint": "http://localhost:8787",
+        "threadcount": "4",
+        "measurementtype": "hdrhistogram",
+        "hdrhistogram.percentiles": "50,90,95,99,99.9"
+      },
+      "raw_file": "run_variant_c_20260214_105651.txt"
+    }
+  ]
+}

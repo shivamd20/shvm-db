@@ -1,15 +1,15 @@
-
 import { DurableObject } from "cloudflare:workers";
 import { SubDO } from "./sub-do";
 import { RoutingTable, ReplicaState, Role } from "./types";
 import { createDOLogger, Logger } from "./debug";
 import { PartitionDOQueries } from "./sql/queries";
-import * as Sentry from "@sentry/cloudflare";
+import { recordStage, STAGE, type RequestObsContext } from "./observability";
 
 export interface Env {
     PARTITION_DO: DurableObjectNamespace<PartitionDO>;
     SUB_DO: DurableObjectNamespace<SubDO>;
     SHVM_DEBUG?: string;
+    OBSERVABILITY?: AnalyticsEngineDataset;
 }
 
 export class PartitionDO extends DurableObject<Env> {
@@ -26,66 +26,79 @@ export class PartitionDO extends DurableObject<Env> {
         this.log("PartitionDO", `constructor id=${ctx.id.toString()}`);
     }
 
-    async registerReplica(replicaId: string): Promise<void> {
-        return Sentry.startSpan({ name: "partition_register_replica" }, async () => {
-            this.log("PartitionDO", `registerReplica id=${replicaId}`);
-            this.sql.exec(PartitionDOQueries.Replicas.REGISTER, replicaId, ReplicaState.READABLE, Date.now());
-        });
+    async registerReplica(replicaId: string, obsContext?: RequestObsContext): Promise<void> {
+        const ctx = obsContext ?? { queryId: "internal", requestStartTs: Date.now(), tableName: "replication", op: "replication" };
+        const startTs = Date.now();
+        this.log("PartitionDO", `registerReplica id=${replicaId}`);
+        this.sql.exec(PartitionDOQueries.Replicas.REGISTER, replicaId, ReplicaState.READABLE, Date.now());
+        const endTs = Date.now();
+        recordStage(this.env, ctx, STAGE.PARTITION_REGISTER_REPLICA, startTs, endTs);
     }
 
     async deregisterReplica(replicaId: string): Promise<void> {
+        const ctx: RequestObsContext = { queryId: "internal", requestStartTs: Date.now(), tableName: "replication", op: "replication" };
+        const startTs = Date.now();
         this.log("PartitionDO", `deregisterReplica id=${replicaId}`);
         this.sql.exec(PartitionDOQueries.Replicas.DEREGISTER, replicaId);
+        const endTs = Date.now();
+        recordStage(this.env, ctx, STAGE.PARTITION_DEREGISTER_REPLICA, startTs, endTs);
     }
 
-    async getRoutingConfig(): Promise<RoutingTable> {
-        return Sentry.startSpan({ name: "partition_get_routing" }, async () => {
-            const cursor = this.sql.exec(PartitionDOQueries.Replicas.GET_READABLE, ReplicaState.READABLE);
-            const rows = Array.from(cursor);
-            const replicaIds = rows.map((r: any) => r.id as string);
+    async getRoutingConfig(obsContext?: RequestObsContext): Promise<RoutingTable> {
+        const ctx = obsContext ?? { queryId: "internal", requestStartTs: Date.now(), tableName: "replication", op: "replication" };
+        const startTs = Date.now();
+        const cursor = this.sql.exec(PartitionDOQueries.Replicas.GET_READABLE, ReplicaState.READABLE);
+        const rows = Array.from(cursor);
+        const replicaIds = rows.map((r: any) => r.id as string);
 
-            this.log("PartitionDO", `getRoutingConfig: ${replicaIds.length} readable replicas`);
+        this.log("PartitionDO", `getRoutingConfig: ${replicaIds.length} readable replicas`);
 
-            return {
-                version: Date.now(),
-                partitions: 100,
-                replicas: {
-                    0: replicaIds
-                }
-            };
-        });
+        const result: RoutingTable = {
+            version: Date.now(),
+            partitions: 100,
+            replicas: {
+                0: replicaIds
+            }
+        };
+        const endTs = Date.now();
+        recordStage(this.env, ctx, STAGE.PARTITION_GET_ROUTING, startTs, endTs);
+        return result;
     }
 
     // --- Autoscaling ---
     async reportLoad(requests: number): Promise<void> {
-        return Sentry.startSpan({ name: "partition_report_load" }, async () => {
-            this.loadCounter += requests;
-            this.log("PartitionDO", `reportLoad: counter=${this.loadCounter}`);
+        const ctx: RequestObsContext = { queryId: "internal", requestStartTs: Date.now(), tableName: "replication", op: "replication" };
+        const startTs = Date.now();
+        this.loadCounter += requests;
+        this.log("PartitionDO", `reportLoad: counter=${this.loadCounter}`);
 
-            // Simple Threshold: Every 10 requests, verify replica count
-            if (this.loadCounter > 10) {
-                this.loadCounter = 0;
-                await this.checkScaling();
-            }
-        });
+        // Simple Threshold: Every 10 requests, verify replica count
+        if (this.loadCounter > 10) {
+            this.loadCounter = 0;
+            await this.checkScaling();
+        }
+        const endTs = Date.now();
+        recordStage(this.env, ctx, STAGE.PARTITION_REPORT_LOAD, startTs, endTs);
     }
 
     async checkScaling() {
-        return Sentry.startSpan({ name: "partition_check_scaling" }, async () => {
-            const cursor = this.sql.exec(PartitionDOQueries.Replicas.COUNT_READABLE, ReplicaState.READABLE);
-            const count = (Array.from(cursor)[0] as any).count as number;
+        const ctx: RequestObsContext = { queryId: "internal", requestStartTs: Date.now(), tableName: "replication", op: "replication" };
+        const startTs = Date.now();
+        const cursor = this.sql.exec(PartitionDOQueries.Replicas.COUNT_READABLE, ReplicaState.READABLE);
+        const count = (Array.from(cursor)[0] as any).count as number;
 
-            this.log("PartitionDO", `checkScaling: readable_replicas=${count}`);
+        this.log("PartitionDO", `checkScaling: readable_replicas=${count}`);
 
-            if (count < 1) {
-                const newReplicaId = `partition-0-r${Date.now()}`;
-                this.log("PartitionDO", `checkScaling: provisioning new replica ${newReplicaId}`);
+        if (count < 1) {
+            const newReplicaId = `partition-0-r${Date.now()}`;
+            this.log("PartitionDO", `checkScaling: provisioning new replica ${newReplicaId}`);
 
-                const standbyStub = this.env.SUB_DO.get(this.env.SUB_DO.idFromName("partition-0-standby"));
-                await standbyStub.init(Role.STANDBY);
-                await standbyStub.provisionReplica(newReplicaId);
-            }
-        });
+            const standbyStub = this.env.SUB_DO.get(this.env.SUB_DO.idFromName("partition-0-standby"));
+            await standbyStub.init(Role.STANDBY);
+            await standbyStub.provisionReplica(newReplicaId);
+        }
+        const endTs = Date.now();
+        recordStage(this.env, ctx, STAGE.PARTITION_CHECK_SCALING, startTs, endTs);
     }
 
     /** List all replicas for observability */

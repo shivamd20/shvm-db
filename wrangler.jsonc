@@ -76,6 +76,12 @@
 			"id": "28f7d803ebaf49fb989333457e9cc451"
 		}
 	],
+	"analytics_engine_datasets": [
+		{
+			"binding": "OBSERVABILITY",
+			"dataset": "request_stages"
+		}
+	],
 	"vars": {
 		"SHVM_DEBUG": "false"
 	},

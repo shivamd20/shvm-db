@@ -19,14 +19,14 @@ export class MetadataService {
         return `table_meta:${tableName}`;
     }
 
-    async getTableMetadata(tableName: string): Promise<TableMetadata> {
+    async getTableMetadata(tableName: string): Promise<{ metadata: TableMetadata; metadataCacheHit: boolean }> {
         const cacheKey = this.getCacheKey(tableName);
 
         // 1. Try KV Cache
         try {
             const cached = await this.env.TABLE_METADATA_CACHE.get<TableMetadata>(cacheKey, "json");
             if (cached) {
-                return cached;
+                return { metadata: cached, metadataCacheHit: true };
             }
         } catch (e) {
             this.log.warn("MetadataService", "KV cache lookup failed", e);
@@ -48,7 +48,7 @@ export class MetadataService {
             this.log.warn("MetadataService", "KV cache update failed", e);
         }
 
-        return metadata;
+        return { metadata, metadataCacheHit: false };
     }
 
     async createTable(input: any): Promise<any> {
