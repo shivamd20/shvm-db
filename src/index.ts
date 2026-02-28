@@ -252,6 +252,9 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			await leaderStub.ensureLeaderAndUpdateItem(doKey, updates, partitionId, tableName, requestId);
 			addEvent("do_update_item", opStart, Date.now() - requestStartTs - opStart);
 		}
+		ctx.waitUntil(
+			getOrSetRoutingCache(pKey, () => env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey)).getRoutingConfig()).then(() => {})
+		);
 		addEvent("request", 0, Date.now() - requestStartTs);
 		flushTrace();
 		return new Response(JSON.stringify({}), { headers: baseHeaders });

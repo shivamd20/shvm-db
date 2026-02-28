@@ -13,6 +13,9 @@
 			"custom_domain": true
 		}
 	],
+	"placement": {
+		"mode": "smart"
+	  },
 	"migrations": [
 		{
 			"tag": "v1",
