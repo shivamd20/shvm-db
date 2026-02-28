@@ -22,6 +22,8 @@ export class PartitionDO extends DurableObject<Env> {
     sql: SqlStorage;
     loadCounter: number = 0;
     private log: Logger;
+    /** In-memory routing cache; updated on register/deregister so getRoutingConfig avoids SQL. */
+    private replicasCache: string[] | null = null;
 
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env);
@@ -29,6 +31,12 @@ export class PartitionDO extends DurableObject<Env> {
         this.log = createDOLogger(env.SHVM_DEBUG);
         this.sql.exec(PartitionDOQueries.Schema.CREATE_REPLICAS);
         this.log("PartitionDO", `constructor id=${ctx.id.toString()}`);
+    }
+
+    private loadReplicasFromSql(): string[] {
+        const cursor = this.sql.exec(PartitionDOQueries.Replicas.GET_READABLE, ReplicaState.READABLE);
+        const rows = Array.from(cursor);
+        return rows.map((r: any) => r.id as string);
     }
 
     private getReportLoadThreshold(): number {
@@ -48,19 +56,22 @@ export class PartitionDO extends DurableObject<Env> {
     async registerReplica(replicaId: string): Promise<void> {
         this.log("PartitionDO", `registerReplica id=${replicaId}`);
         this.sql.exec(PartitionDOQueries.Replicas.REGISTER, replicaId, ReplicaState.READABLE, Date.now());
+        this.replicasCache = this.loadReplicasFromSql();
     }
 
     async deregisterReplica(replicaId: string): Promise<void> {
         this.log("PartitionDO", `deregisterReplica id=${replicaId}`);
         this.sql.exec(PartitionDOQueries.Replicas.DEREGISTER, replicaId);
+        this.replicasCache = this.loadReplicasFromSql();
     }
 
     async getRoutingConfig(requestId?: string): Promise<RoutingTable> {
         const startMs = 0;
         const t0 = Date.now();
-        const cursor = this.sql.exec(PartitionDOQueries.Replicas.GET_READABLE, ReplicaState.READABLE);
-        const rows = Array.from(cursor);
-        const replicaIds = rows.map((r: any) => r.id as string);
+        if (this.replicasCache === null) {
+            this.replicasCache = this.loadReplicasFromSql();
+        }
+        const replicaIds = this.replicasCache;
         this.log("PartitionDO", `getRoutingConfig: ${replicaIds.length} readable replicas`);
         this.recordTrace(requestId, "partition_get_routing", startMs, Date.now() - t0);
         return {
@@ -78,7 +89,7 @@ export class PartitionDO extends DurableObject<Env> {
         const threshold = this.getReportLoadThreshold();
         if (this.loadCounter > threshold) {
             this.loadCounter = 0;
-            await this.checkScaling();
+            this.ctx.waitUntil(this.checkScaling());
         }
         this.recordTrace(requestId, "partition_report_load", startMs, Date.now() - t0);
     }

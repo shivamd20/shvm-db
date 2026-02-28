@@ -23,6 +23,7 @@ export interface Env {
 
 const NUM_PARTITIONS = 100;
 const TRACE_DO_SINGLETON_NAME = "shvm-db-trace";
+const ROUTING_CACHE_MAX_SIZE = 1000;
 
 function hashPartitionKey(pk: string, numPartitions: number): number {
 	let hash = 5381;
@@ -37,6 +38,18 @@ function getRequestId(request: Request): string {
 }
 
 const validRoutingCache = new Map<string, RoutingTable>();
+
+async function getOrSetRoutingCache(pKey: string, fetch: () => Promise<RoutingTable>): Promise<{ routing: RoutingTable; fromCache: boolean }> {
+	const existing = validRoutingCache.get(pKey);
+	if (existing !== undefined) return { routing: existing, fromCache: true };
+	const routing = await fetch();
+	if (validRoutingCache.size >= ROUTING_CACHE_MAX_SIZE) {
+		const firstKey = validRoutingCache.keys().next().value;
+		if (firstKey !== undefined) validRoutingCache.delete(firstKey);
+	}
+	validRoutingCache.set(pKey, routing);
+	return { routing, fromCache: false };
+}
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -245,16 +258,10 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	}
 
 	if (op === "GetItem") {
-		let routingCacheHit = true;
 		const routingStart = Date.now() - requestStartTs;
-		if (!validRoutingCache.has(pKey)) {
-			routingCacheHit = false;
-			const pStub = env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey));
-			const r = await pStub.getRoutingConfig(requestId);
-			validRoutingCache.set(pKey, r);
-		}
+		const pStub = env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey));
+		const { routing, fromCache: routingCacheHit } = await getOrSetRoutingCache(pKey, () => pStub.getRoutingConfig(requestId));
 		addEvent("get_routing_config", routingStart, Date.now() - requestStartTs - routingStart, { routing_cache: routingCacheHit ? "hit" : "miss" });
-		const routing = validRoutingCache.get(pKey)!;
 
 		const replicas = routing.replicas[partitionId] || [];
 		let readTarget: string;
@@ -280,7 +287,9 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 		baseHeaders["X-SHIVAM-DB-READ-TARGET"] = readTarget;
 
 		const doStart = Date.now() - requestStartTs;
-		const item = await rStub.ensureLeaderAndGetItem(doKey, requestId);
+		const item = replicas.length === 0
+			? await rStub.ensureLeaderAndGetItem(doKey, requestId)
+			: await rStub.getItem(doKey, requestId);
 		addEvent("do_get_item", doStart, Date.now() - requestStartTs - doStart);
 		addEvent("request", 0, Date.now() - requestStartTs);
 		flushTrace();

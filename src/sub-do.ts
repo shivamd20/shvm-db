@@ -367,6 +367,11 @@ export class SubDO extends DurableObject<Env> {
             this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { lru: "hit" });
             return cached;
         }
+        if (!this.bf.has(sk)) {
+            this.log("SubDO", `getItem BLOOM NEGATIVE sk=${sk}`);
+            this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { bloom: "negative" });
+            return null;
+        }
         const cursor = this.sql.exec(SubDOQueries.Items.GET_LATEST, sk);
         const row = Array.from(cursor)[0] as any;
         if (!row || (row.deleted as number) === 1) {

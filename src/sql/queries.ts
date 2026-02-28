@@ -35,6 +35,7 @@ export const SubDOQueries = {
         GET_SEQ: "SELECT val FROM cursors WHERE id = 'global_seq'"
     },
     Items: {
+        // Index-optimal: PRIMARY KEY (sk, version DESC) gives single-row lookup; do not add extra WHERE terms
         GET_LATEST: "SELECT value, deleted FROM items_v2 WHERE sk = ? ORDER BY version DESC LIMIT 1",
         INSERT: "INSERT INTO items_v2 (sk, version, value, deleted) VALUES (?, ?, ?, ?)",
         GET_HISTORY: `

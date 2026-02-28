@@ -4,8 +4,8 @@ import type { TraceEvent } from "./trace-types";
 
 const TRACE_RETENTION_MS = 2 * 60 * 60 * 1000; // 2 hours
 const TRACE_FLUSH_DELAY_MS = 2000;
-/** SQLite max bind params is 999; 7 params per row -> chunk at 100 */
-const TRACE_INSERT_CHUNK_SIZE = 100;
+/** SQLite bind param limit can be lower in some runtimes (~500); 7 params per row -> chunk at 50 */
+const TRACE_INSERT_CHUNK_SIZE = 50;
 
 export interface Env {
 	TRACE_DO: DurableObjectNamespace<TraceDO>;
