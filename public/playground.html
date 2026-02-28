@@ -20,17 +20,13 @@
         <header>
             <a href="/" class="logo">shvm-db</a>
             <span class="experiment-label">Experiment</span>
-            <div class="links">
-                <a href="/index.html#vision">Philosophy</a>
-                <a href="/index.html#scaling">Architecture</a>
-                <a href="/why.html">Why</a>
-                <a href="/blog.html">Blog</a>
-                <a href="/index.html#dist-sys">Distributed Systems</a>
+            <button class="nav-toggle" aria-label="Open menu" type="button"></button>
+            <nav class="links">
                 <a href="/benchmark-logs.html">Benchmarks</a>
                 <a href="/playground.html" class="active">Playground</a>
-                <a href="/docs.html">Docs</a>
-                <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
-            </div>
+                <a href="/trace.html">Trace</a>
+                <a href="https://github.com/shivamd20/shvm-db" target="_blank" rel="noopener" class="github-link">GitHub</a>
+            </nav>
         </header>
 
         <div class="ide-container">
@@ -490,6 +486,7 @@
             parent.classList.toggle('open');
         }
     </script>
+    <script src="script.js"></script>
 </body>
 
 </html>

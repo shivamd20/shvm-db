@@ -85,6 +85,15 @@ header {
     color: #fff;
 }
 
+@media (min-width: 901px) {
+    .nav-toggle {
+        display: none !important;
+    }
+    .links {
+        display: flex !important;
+    }
+}
+
 /* Hero */
 .hero {
     padding: 140px 0 100px;
@@ -127,12 +136,65 @@ h1 {
     margin: 0 auto 40px;
 }
 
+.hero-lead {
+    font-size: 1.15rem;
+    color: #aaa;
+    max-width: 580px;
+    margin: 0 auto 2rem;
+    line-height: 1.6;
+}
+
+.hero-lead a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.hero-lead a:hover {
+    text-decoration: underline;
+}
+
+.hero-deploy {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.section-subtitle {
+    font-size: 1rem;
+    color: #888;
+    max-width: 640px;
+    margin: 0 auto 1.5rem;
+    text-align: center;
+}
+
+.section-subtitle a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.section-subtitle a:hover {
+    text-decoration: underline;
+}
+
 /* Buttons */
 .cta-group {
     display: flex;
     justify-content: center;
-    gap: 16px;
-    margin-bottom: 60px;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.benchmark-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 1.5rem;
+}
+
+.benchmark-actions .btn {
+    margin: 0;
 }
 
 .btn {
@@ -630,33 +692,194 @@ footer {
     color: #fff;
 }
 
+/* Story section */
+.story-section h2 {
+    margin-bottom: 1rem;
+}
+
+.story-content {
+    max-width: 680px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+.story-content p {
+    margin-bottom: 1.25rem;
+    text-align: left;
+}
+
+.story-content p:last-child {
+    margin-bottom: 0;
+}
+
+.vision-content--full {
+    max-width: 680px;
+    margin: 0 auto;
+}
+
+.vision-content--full p {
+    margin: 0 auto 1rem;
+}
+
+/* How numbers are produced */
+.how-numbers {
+    max-width: 720px;
+    margin: 2.5rem auto 0;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: left;
+}
+
+.how-numbers h3 {
+    font-size: 1.1rem;
+    color: #ccc;
+    margin-bottom: 0.75rem;
+}
+
+.how-numbers p {
+    font-size: 0.95rem;
+    color: #888;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.observability-section p {
+    margin-bottom: 0;
+}
+
+/* Nav toggle (mobile) */
+.nav-toggle {
+    display: none;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.nav-toggle::before,
+.nav-toggle::after,
+.nav-toggle span {
+    content: '';
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: #aaa;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+.nav-toggle::before {
+    top: 14px;
+}
+
+.nav-toggle span {
+    top: 21px;
+}
+
+.nav-toggle::after {
+    top: 28px;
+}
+
+.nav-toggle[aria-expanded="true"]::before {
+    transform: translateX(-50%) translateY(7px) rotate(45deg);
+}
+
+.nav-toggle[aria-expanded="true"] span {
+    opacity: 0;
+}
+
+.nav-toggle[aria-expanded="true"]::after {
+    transform: translateX(-50%) translateY(-7px) rotate(-45deg);
+}
+
 /* Mobile */
 @media (max-width: 900px) {
     h1 {
-        font-size: 3rem;
+        font-size: 2.25rem;
+        line-height: 1.2;
+        margin-bottom: 1rem;
+    }
+
+    .hero {
+        padding: 2rem 0 3rem;
+    }
+
+    .hero-lead {
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .badge {
+        font-size: 0.8rem;
+        padding: 6px 12px;
     }
 
     .features {
         grid-template-columns: 1fr;
     }
 
+    section {
+        padding: 2.5rem 0;
+    }
+
+    section h2 {
+        font-size: 1.75rem;
+        margin-bottom: 1.25rem;
+    }
+
     /* Header Mobile */
     header {
-        flex-direction: column;
-        gap: 15px;
-        padding-bottom: 15px;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 12px 0;
+        align-items: center;
+    }
+
+    header .logo {
+        margin-right: auto;
+    }
+
+    .nav-toggle {
+        display: flex;
+        order: 2;
     }
 
     .links {
         margin-left: 0;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 10px;
+        width: 100%;
+        order: 3;
+        display: none;
+        flex-direction: column;
+        gap: 0;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .links.is-open {
+        display: flex;
     }
 
     .links a {
-        margin: 0 8px;
-        font-size: 0.9rem;
+        margin: 0;
+        padding: 12px 0;
+        font-size: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .links a:last-child {
+        border-bottom: none;
+    }
+
+    .experiment-label {
+        margin-left: 8px;
     }
 
     /* Layout Mobile */
@@ -674,46 +897,167 @@ footer {
         padding-bottom: 20px;
     }
 
+    /* Vision grid stack on mobile */
+    .vision-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        text-align: left;
+    }
+
+    .vision-image pre {
+        padding: 1rem;
+        font-size: 0.8rem;
+        overflow-x: auto;
+    }
+
+    /* Architecture diagram: vertical stack on mobile */
+    .diagram-container {
+        padding: 1.5rem 1rem;
+        margin: 1.5rem auto;
+    }
+
     .arch-flow {
         flex-direction: column;
-        gap: 30px;
+        align-items: center;
+        gap: 0;
+        width: 100%;
+    }
+
+    .arch-step {
+        min-width: 140px;
+        width: 100%;
+        max-width: 200px;
+        padding: 14px 16px;
+        font-size: 0.95rem;
     }
 
     .arch-arrow {
-        transform: rotate(90deg);
-        margin: 5px 0;
+        flex: none;
         width: 2px;
-        height: 30px;
+        height: 24px;
+        margin: 4px 0;
+        background: #333;
     }
 
     .arch-arrow::after {
-        transform: rotate(90deg);
-        right: -3px;
+        right: auto;
+        left: 50%;
         top: auto;
-        bottom: -8px;
+        bottom: -6px;
+        margin-left: -5px;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 6px solid #333;
+        border-bottom: none;
     }
 
     .arch-branch-container {
         flex-direction: column;
-        gap: 20px;
-        border-left: 2px solid #333;
-        padding-left: 20px;
-        margin-left: -20px;
-        /* Align nicely */
+        align-items: center;
+        gap: 1.5rem;
+        width: 100%;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px dashed rgba(255, 255, 255, 0.1);
     }
 
-    .arch-branch-lines {
+    .arch-branch-lines,
+    .arch-branch-container::before,
+    .arch-branch-item::before {
         display: none;
     }
 
-    /* Simplified for mobile */
-    .arch-branch-item::before {
-        width: 10px;
-        left: -30px;
+    .arch-branch-item {
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 200px;
     }
 
-    /* ... existing mobile styles ... */
-    /* Connect to border */
+    .arch-branch-item .arch-arrow {
+        flex: none;
+        height: 20px;
+    }
+
+    .perf-grid {
+        grid-template-columns: 1fr;
+        margin-top: 2rem;
+        gap: 1.25rem;
+    }
+
+    .perf-item {
+        padding: 1.25rem;
+    }
+
+    .benchmark-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .benchmark-card {
+        padding: 1.5rem 1.25rem;
+    }
+
+    .benchmark-card .stat {
+        font-size: 2.5rem;
+    }
+
+    footer {
+        padding: 2rem 0;
+        margin-top: 2rem;
+    }
+
+    .footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem 1rem;
+    }
+
+    .footer-links a {
+        margin: 0;
+    }
+
+    .how-numbers {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+    }
+
+    /* Playground: stack panels on mobile */
+    .ide-container {
+        height: auto;
+        min-height: 100vh;
+    }
+    .ide-main {
+        flex-direction: column;
+    }
+    .ide-panel.left {
+        width: 100%;
+        min-height: 280px;
+        border-right: none;
+        border-bottom: 1px solid var(--card-border);
+    }
+}
+
+@media (max-width: 480px) {
+    .cta-group,
+    .benchmark-actions {
+        flex-direction: column;
+    }
+
+    .cta-group .btn,
+    .benchmark-actions .btn {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+@media (max-width: 600px) {
+    .trace-toolbar input {
+        min-width: 0;
+        width: 100%;
+    }
 }
 
 /* ------------------------------------------------------------------ */

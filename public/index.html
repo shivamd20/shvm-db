@@ -4,10 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="shvm-db - DynamoDB-compatible API on Cloudflare Durable Objects. Experiment to see how far DOs can scale.">
-    <meta name="keywords"
-        content="shvm-db, DynamoDB, Cloudflare, Durable Objects, distributed database, serverless, edge computing">
+    <meta name="description" content="DynamoDB-style API on Cloudflare Durable Objects. One writer per partition, SQLite, benchmarks and traces.">
+    <meta name="keywords" content="shvm-db, DynamoDB, Cloudflare, Durable Objects">
     <title>shvm-db</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,49 +19,52 @@
         <header>
             <a href="/" class="logo">shvm-db</a>
             <span class="experiment-label">Experiment</span>
-            <div class="links">
-                <a href="/index.html#vision">Philosophy</a>
-                <a href="/index.html#scaling">Architecture</a>
-                <a href="/why.html">Why</a>
-                <a href="/blog.html">Blog</a>
-                <a href="/index.html#dist-sys">Distributed Systems</a>
+            <button class="nav-toggle" aria-label="Open menu" type="button"></button>
+            <nav class="links">
                 <a href="/benchmark-logs.html">Benchmarks</a>
                 <a href="/playground.html">Playground</a>
-                <a href="/docs.html">Docs</a>
-                <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
-            </div>
+                <a href="/trace.html">Trace</a>
+                <a href="https://github.com/shivamd20/shvm-db" target="_blank" rel="noopener" class="github-link">GitHub</a>
+            </nav>
         </header>
 
         <main>
             <section class="hero">
-                <h1>DynamoDB-compatible API on <span class="gradient-text">Durable Objects</span></h1>
-                <p class="subtitle">An experiment to see how far DOs can scale. Same PutItem/GetItem/UpdateItem semantics, one writer per partition, SQLite under the hood. <a href="/why.html">Why this exists</a>.</p>
+                <h1>DynamoDB-style API on <span class="gradient-text">Durable Objects</span></h1>
+                
+                <p class="hero-lead">Same PutItem/GetItem/UpdateItem semantics, one writer per partition, SQLite under the hood. I built it to see where the bottlenecks are.  <a href="#story"></a></p>
                 <div class="cta-group">
-                    <a href="/docs.html" class="btn primary">Docs</a>
-                    <a href="#scaling" class="btn secondary">Architecture</a>
+                    <a href="/benchmark-logs.html" class="btn primary">See benchmarks</a>
+                    <a href="/playground.html" class="btn secondary">Try it</a>
                 </div>
-                <div style="margin-top: 2rem; display: flex; justify-content: center;">
+
+        
+                 <br>
+
+                <div class="hero-deploy">
                     <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/shivamd20/shvm-db"
-                        target="_blank">
-                        <img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare" />
+                        target="_blank" rel="noopener">
+                        <img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare" width="180" height="32" />
                     </a>
                 </div>
+                <br>
+                <br>
+   
                 <div class="badge">
-                    <span>v0.2.0 (Replication). Experiment, not for production.</span>
+                    <span>v0.2.0. Experiment, not for production.</span>
                 </div>
             </section>
 
-            <section id="vision" class="vision-section">
+            <section id="what" class="vision-section">
                 <div class="vision-grid">
                     <div class="vision-content">
-                        <h2>What it does</h2>
-                        <p>DynamoDB gets its throughput from partitioning and single-writer discipline. shvm-db rebuilds that model: exact PutItem, GetItem, UpdateItem, DeleteItem semantics; one partition key maps to one Leader Durable Object; read replicas when load spikes; no hidden caches, SQLite is the only source of truth.</p>
-                        <h3>Limitations (MVP)</h3>
-                        <p>No LSI/GSI, no automatic partition splitting, no multi-region. Hot partitions hit a hard ceiling. See the <a href="https://github.com/shivamd20/shvm-db#non-goals-mvp">README</a> for the full list.</p>
+                        <h2>What it is</h2>
+                        <p>One partition key maps to one Leader Durable Object; read replicas when load spikes. No hidden caches — SQLite is the only source of truth. PutItem, GetItem, UpdateItem, DeleteItem.</p>
+                        <h3>Limitations</h3>
+                        <p>No LSI/GSI, no automatic partition splitting, no multi-region. Hot partitions hit a hard ceiling. <a href="https://github.com/shivamd20/shvm-db#non-goals-mvp">Full list on GitHub</a>.</p>
                     </div>
                     <div class="vision-image">
-                        <pre><code class="language-javascript">// It's just an API call.
-await client.send(new PutItemCommand({
+                        <pre><code>await client.send(new PutItemCommand({
   TableName: "Users",
   Item: {
     PK: { S: "user_123" },
@@ -76,45 +77,33 @@ await client.send(new PutItemCommand({
             </section>
 
             <section id="scaling" class="diagram-section">
-                <h2>Leader-Follower Architecture</h2>
-                <p>The system uses a Leader-Standby-Replica model: one writer per partition, replicas consume the log and serve reads.</p>
+                <h2>Leader–Standby–Replica</h2>
+                <p>One writer per partition; replicas consume the log and serve reads.</p>
 
                 <div class="diagram-container">
                     <div class="arch-flow">
-                        <!-- Step 1: Client -->
-                        <div class="arch-step">
-                            Client
-                        </div>
-                        <div class="arch-arrow"></div>
-
-                        <!-- Step 2: Router -->
+                        <div class="arch-step">Client</div>
+                        <div class="arch-arrow" aria-hidden="true"></div>
                         <div class="arch-step">
                             Router
                             <span class="detail">PartitionDO</span>
                         </div>
-                        <div class="arch-arrow"></div>
-
-                        <!-- Step 3: Branching DOs -->
+                        <div class="arch-arrow" aria-hidden="true"></div>
                         <div class="arch-branch-container">
-                            <div class="arch-branch-lines"></div> <!-- Visual Bracket -->
-
-                            <!-- Branch A: Leader -->
                             <div class="arch-branch-item">
                                 <div class="arch-step highlight">
                                     Leader DO
-                                    <span class="detail">Write & Log</span>
+                                    <span class="detail">Write &amp; Log</span>
                                 </div>
-                                <div class="arch-arrow"></div>
+                                <div class="arch-arrow" aria-hidden="true"></div>
                                 <div class="arch-step">Queue</div>
                             </div>
-
-                            <!-- Branch B: Replica -->
                             <div class="arch-branch-item">
                                 <div class="arch-step highlight">
                                     Read Replica
-                                    <span class="detail">Read Only</span>
+                                    <span class="detail">Read only</span>
                                 </div>
-                                <div class="arch-arrow"></div>
+                                <div class="arch-arrow" aria-hidden="true"></div>
                                 <div class="arch-step">SQLite</div>
                             </div>
                         </div>
@@ -123,99 +112,86 @@ await client.send(new PutItemCommand({
 
                 <div class="perf-grid">
                     <div class="perf-item">
-                        <h4>Leader (Writes)</h4>
-                        <p>All writes go to a single Leader. It assigns a monotonic version number and appends to an
-                            immutable log.
-                            This guarantees strong consistency.</p>
+                        <h4>Leader</h4>
+                        <p>All writes go to one Leader. It assigns a monotonic version and appends to an immutable log.</p>
                     </div>
                     <div class="perf-item">
-                        <h4>Standby (History)</h4>
-                        <p>A Standby node consumes the full history. It is responsible for onboarding new replicas by
-                            streaming
-                            historical backfill data.</p>
+                        <h4>Standby</h4>
+                        <p>Consumes full history. Onboards new replicas by streaming backfill from Standby.</p>
                     </div>
                     <div class="perf-item">
-                        <h4>Autoscaling Replicas</h4>
-                        <p>If read load exceeds capacity, the system automatically spawns new Replicas defined by the
-                            cursor model.
-                            They backfill from Standby and then serve traffic.</p>
+                        <h4>Replicas</h4>
+                        <p>When read load exceeds a threshold, new replicas are provisioned; they backfill then serve traffic.</p>
                     </div>
+                </div>
+            </section>
+
+            <section id="ordering" class="vision-section">
+                <div class="vision-content vision-content--full">
+                    <h2>Ordering and replicas</h2>
+                    <p>No wall clocks. Every mutation gets a monotonic version from the Leader; replicas apply in strict order so time never moves backwards. Replica lifecycle: <code>CREATED</code> → <code>BACKFILLING</code> → <code>CATCHING_UP</code> → <code>READABLE</code>. Each replica stores <code>lastAppliedVersion</code> so the system stays robust to crashes and reordering.</p>
+                </div>
+            </section>
+
+            <section id="story" class="story-section">
+                <h2>Why and how it evolved</h2>
+                <div class="story-content">
+                    <p>DynamoDB gets a lot of throughput from partitioning, routing, and discipline — not a special storage engine. I wanted to see how much of that I could rebuild with pieces I could run and measure. So I could see where the bottlenecks are. One writer per partition, SQLite behind it, no hidden caches. Why Durable Objects? Each DO has a single-writer guarantee; that maps to one partition = one writer. I didn't have to build coordination; the runtime gives it. This project is an attempt to see how far DOs can scale for this workload, not to sell a product.</p>
+                    <p>Started with a single DO and SQLite. Then table metadata, replication over queues, UpdateItem, YCSB benchmarking and the benchmark-logs page. TraceDO and routing cache followed; table-metadata caching in the request path helped. Observability improved with trace events. Workload sizes were reduced so runs finish in a reasonable time.</p>
+                    <p>What I learned: hot partitions cap throughput — one writer means one serialized write stream. Routing and metadata caching removed a lot of lookups. The trace viewer made it possible to see where time was spent. I still don't have a clean answer to "how far DOs can scale" but the numbers below are the current snapshot.</p>
+                    <p><strong>What this is not:</strong> not a DynamoDB replacement, not tuned for production. No LSI/GSI, no partition splitting, no multi-region.</p>
                 </div>
             </section>
 
             <section id="benchmark" class="benchmark-section">
-                <div class="container">
-                    <h2>Performance (latest run)</h2>
-                    <p class="subtitle">From YCSB runs. Local dev, Feb 2026. See <a href="/benchmark-logs.html">Benchmark Logs</a> for full history.</p>
+                <h2>Performance (latest run)</h2>
+                <p class="section-subtitle">YCSB, local dev. Three variants: hot partition (variant_a), sustained mixed (variant_b), read-heavy (variant_c). <a href="/benchmark-logs.html">Full history &amp; charts</a>.</p>
 
-                    <div class="benchmark-grid">
-                        <div class="benchmark-card">
-                            <h3>Sustained Mixed (ops/s)</h3>
-                            <div class="stat">210 <span class="unit">ops/sec</span></div>
-                            <p>variant_b, local</p>
-                        </div>
-                        <div class="benchmark-card">
-                            <h3>p99 read latency</h3>
-                            <div class="stat">141 <span class="unit">ms</span></div>
-                            <p>variant_b, same run</p>
-                        </div>
-                        <div class="benchmark-card">
-                            <h3>Hot Partition (ops/s)</h3>
-                            <div class="stat">265 <span class="unit">ops/sec</span></div>
-                            <p>variant_a, local</p>
-                        </div>
+                <div class="benchmark-grid">
+                    <div class="benchmark-card">
+                        <h3>Sustained mixed (ops/s)</h3>
+                        <div class="stat">210 <span class="unit">ops/s</span></div>
+                        <p>variant_b, local</p>
                     </div>
+                    <div class="benchmark-card">
+                        <h3>p99 read (ms)</h3>
+                        <div class="stat">141 <span class="unit">ms</span></div>
+                        <p>variant_b</p>
+                    </div>
+                    <div class="benchmark-card">
+                        <h3>Hot partition (ops/s)</h3>
+                        <div class="stat">265 <span class="unit">ops/s</span></div>
+                        <p>variant_a, local</p>
+                    </div>
+                </div>
 
-                    <div style="margin-top: 30px; text-align: center;">
-                        <p>Run <code>npm run benchmark:run</code> (local) or <code>npm run benchmark:live</code> to reproduce. Raw results in <a href="https://github.com/shivamd20/shvm-db/tree/main/benchmarks">benchmarks/</a>.</p>
-                        <a href="/benchmark-logs.html" class="btn secondary">Benchmark Logs &rarr;</a>
-                    </div>
+                <div class="benchmark-actions">
+                    <a href="/benchmark-logs.html" class="btn primary">Benchmark Logs</a>
+                    <a href="/playground.html" class="btn secondary">Playground</a>
+                </div>
+
+                <div class="how-numbers">
+                    <h3>How the numbers are produced</h3>
+                    <p>YCSB runs live in <code>benchmarks/workloads/</code>. Run <code>npm run benchmark:run</code> (local) or <code>npm run benchmark:live</code>. Raw output goes to <code>benchmarks/results/run_&lt;timestamp&gt;/</code>. <code>benchmarks/process_results.py</code> parses the run files and writes <code>public/benchmarks/&lt;timestamp&gt;/results.json</code> and updates <code>public/benchmarks/index.json</code>. The Benchmark Logs page and the cards above read from that. So the source of truth is whatever is in <code>public/benchmarks/</code> after your last run.</p>
                 </div>
             </section>
 
+            <section id="observability" class="observability-section">
+                <h2>Traces</h2>
+                <p>Every request has an ID. In the <a href="/playground.html">Playground</a>, send a request and use “View trace”, or open the <a href="/trace.html">Trace</a> page and enter a request ID. You get a timeline of events for that request.</p>
+            </section>
 
-            <section id="dist-sys" class="vision-section">
-                <div class="vision-grid">
-                    <div class="vision-content">
-                        <h2>Distributed Systems Reality</h2>
-                        <p>Tradeoffs are explicit. The system does not use wall clocks for ordering. Every mutation gets a monotonic integer version from the Leader. Replicas apply updates in strict order so time never moves backwards.</p>
-
-                        <h3>Backfill & Migration</h3>
-                        <p>Replica provisioning is handled by a state machine: <code>CREATED</code> &rarr;
-                            <code>BACKFILLING</code> &rarr; <code>CATCHING_UP</code> &rarr; <code>READABLE</code>.
-                            Only when a replica is fully caught up does it serve traffic.
-                        </p>
-
-                        <h3>Cursor Model</h3>
-                        <p>Replicas store a single cursor: <code>lastAppliedVersion</code>. This makes the system robust
-                            against crashes,
-                            duplicates, and reordering.</p>
-                    </div>
-                    <div class="vision-image">
-                        <pre><code class="language-javascript">// Conditional Write Example
-// Fail if someone else updated it
-await client.send(new PutItemCommand({
-  TableName: "Counter",
-  Item: {
-    PK: { S: "cnt" },
-    val: { N: "11" },
-    ver: { N: "2" }
-  },
-  ConditionExpression: "ver = :v",
-  ExpressionAttributeValues: {
-    ":v": { N: "1" }
-  }
-}));</code></pre>
-                    </div>
-                </div>
+            <section id="api" class="vision-section">
+                <h2>Try it</h2>
+                <p class="section-subtitle">Use the <a href="/playground.html">Playground</a> to run PutItem, GetItem, CreateTable, etc. API is DynamoDB JSON over HTTP; full details (cURL, SDK) are in the <a href="https://github.com/shivamd20/shvm-db#readme">GitHub README</a>.</p>
             </section>
 
             <footer>
                 <div class="footer-links">
-                    <a href="https://github.com/shivamd20/shvm-db">GitHub</a>
-                    <a href="/docs.html">Documentation</a>
-                    <a href="/why.html">Why</a>
-                    <a href="/blog.html">Blog</a>
+                    <a href="https://github.com/shivamd20/shvm-db" target="_blank" rel="noopener">GitHub</a>
+                    <a href="/benchmark-logs.html">Benchmark Logs</a>
+                    <a href="/playground.html">Playground</a>
+                    <a href="/trace.html">Trace</a>
                 </div>
                 <p>&copy; 2026 shvm-db. Open source.</p>
             </footer>

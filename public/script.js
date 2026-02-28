@@ -1,5 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('shvm-db loaded');
+    // Nav toggle (mobile)
+    const navToggle = document.querySelector('.nav-toggle');
+    const navLinks = document.querySelector('.links');
+    if (navToggle && navLinks) {
+        navToggle.addEventListener('click', () => {
+            const open = navLinks.classList.toggle('is-open');
+            navToggle.setAttribute('aria-expanded', open);
+            navToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+        });
+    }
 
     // 1. Highlight Active Header Link
     const currentPath = window.location.pathname;

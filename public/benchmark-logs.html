@@ -148,6 +148,22 @@
             color: #888;
             padding: 2rem;
         }
+
+        @media (max-width: 900px) {
+            .benchmark-container {
+                grid-template-columns: 1fr;
+                min-height: 0;
+            }
+            .run-list {
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                padding-right: 0;
+                padding-bottom: 1rem;
+            }
+            .variant-tabs {
+                flex-wrap: wrap;
+            }
+        }
     </style>
 </head>
 
@@ -156,24 +172,20 @@
         <header>
             <a href="/" class="logo">shvm-db</a>
             <span class="experiment-label">Experiment</span>
-            <div class="links">
-                <a href="/index.html#vision">Philosophy</a>
-                <a href="/index.html#scaling">Architecture</a>
-                <a href="/why.html">Why</a>
-                <a href="/blog.html">Blog</a>
-                <a href="/index.html#dist-sys">Distributed Systems</a>
+            <button class="nav-toggle" aria-label="Open menu" type="button"></button>
+            <nav class="links">
                 <a href="/benchmark-logs.html" class="active">Benchmarks</a>
                 <a href="/playground.html">Playground</a>
-                <a href="/docs.html">Docs</a>
-                <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
-            </div>
+                <a href="/trace.html">Trace</a>
+                <a href="https://github.com/shivamd20/shvm-db" target="_blank" rel="noopener" class="github-link">GitHub</a>
+            </nav>
         </header>
 
         <main>
             <section class="hero" style="min-height: auto; padding: 4rem 0 2rem;">
                 <h1>Benchmark <span class="gradient-text">Logs</span></h1>
                 <p class="subtitle">Per-run YCSB results and latency histograms. Runs come from <code>npm run benchmark:run</code> (local) or <code>npm run benchmark:live</code>.</p>
-                <p class="subtitle" style="margin-top: 0.5rem; font-size: 0.9rem; color: #888;">Variants: Hot Partition Stress (variant_a), Sustained Mixed Load (variant_b), Concurrency Scaling (variant_c). See <a href="/blog.html">Blog</a> for workload details.</p>
+                <p class="subtitle" style="margin-top: 0.5rem; font-size: 0.9rem; color: #888;">Variants: Hot Partition Stress (variant_a), Sustained Mixed Load (variant_b), Concurrency Scaling (variant_c). <a href="/index.html#benchmark">How numbers are produced</a>.</p>
             </section>
 
             <div class="benchmark-container">
@@ -188,10 +200,10 @@
 
             <footer>
                 <div class="footer-links">
-                    <a href="https://github.com/shivamd20/shvm-db">GitHub</a>
-                    <a href="/docs.html">Documentation</a>
-                    <a href="/why.html">Why</a>
-                    <a href="/blog.html">Blog</a>
+                    <a href="https://github.com/shivamd20/shvm-db" target="_blank" rel="noopener">GitHub</a>
+                    <a href="/benchmark-logs.html">Benchmark Logs</a>
+                    <a href="/playground.html">Playground</a>
+                    <a href="/trace.html">Trace</a>
                 </div>
                 <p>&copy; 2026 shvm-db. Open source.</p>
             </footer>
@@ -425,6 +437,7 @@
 
         init();
     </script>
+    <script src="script.js"></script>
 </body>
 
 </html>
