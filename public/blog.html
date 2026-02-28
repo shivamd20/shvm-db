@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="shvm-db experiment log: how it evolved, workload config, latency and throughput over time, and what I learned.">
+    <title>Experiment blog - shvm-db</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&family=Fira+Code&display=swap" rel="stylesheet">
+    <style>
+        .blog-content { max-width: 720px; margin: 0 auto 4rem; }
+        .blog-content h2 { margin-top: 2.5rem; margin-bottom: 0.75rem; }
+        .blog-content h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 1.1rem; }
+        .blog-content p { margin-bottom: 1rem; line-height: 1.6; }
+        .blog-content ul { margin-bottom: 1rem; padding-left: 1.5rem; }
+        .blog-content li { margin-bottom: 0.35rem; }
+        .blog-content table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 1rem 0 2rem; }
+        .blog-content th, .blog-content td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .blog-content th { color: #888; font-weight: 500; }
+        .blog-content code { background: rgba(255,255,255,0.06); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.9em; }
+        .blog-content a { color: var(--primary-color); }
+        .note { font-size: 0.9rem; color: #888; margin-top: 0.5rem; }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="logo">shvm-db</a>
+            <span class="experiment-label">Experiment</span>
+            <div class="links">
+                <a href="/index.html#vision">Philosophy</a>
+                <a href="/index.html#scaling">Architecture</a>
+                <a href="/why.html">Why</a>
+                <a href="/blog.html" class="active">Blog</a>
+                <a href="/index.html#dist-sys">Distributed Systems</a>
+                <a href="/benchmark-logs.html">Benchmarks</a>
+                <a href="/playground.html">Playground</a>
+                <a href="/docs.html">Docs</a>
+                <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero" style="min-height: auto; padding: 4rem 0 2rem;">
+                <h1>Experiment <span class="gradient-text">log</span></h1>
+                <p class="subtitle">How the project evolved, what the benchmarks measure, and what I learned. For motivation, see <a href="/why.html">why this exists</a>.</p>
+            </section>
+
+            <article class="blog-content">
+                <h2>How it evolved</h2>
+                <p>Started with a single Durable Object and SQLite. Then table metadata, LRU and Bloom filter caching, and validation. After that came async replication and read distribution over queues so replicas could serve reads. UpdateItem landed next, then the YCSB-based benchmarking setup and the benchmark-logs page. TraceDO and routing cache followed; so did smart placement in Wrangler config and table-metadata caching in the request path. Observability got better with trace events and error handling in TraceDO. Workload sizes were reduced so runs finish in a reasonable time.</p>
+
+                <h2>Workloads</h2>
+                <p>Three YCSB variants live in <code>benchmarks/workloads/</code>. What each does:</p>
+                <ul>
+                    <li>Variant A (Hot Partition Stress): 500 records, 3k operations, 40% read / 40% update / 20% insert, Zipfian 0.99, 8 threads. Pushes a small key set hard.</li>
+                    <li>Variant B (Sustained Mixed Load): 2k records, 8k operations, 60% read / 25% update / 15% insert, latest distribution, 6 threads. Mix of read and write over a larger set.</li>
+                    <li>Variant C (Concurrency Scaling): 1.5k records, 6k operations, 80% read / 15% update / 5% insert, uniform distribution, 4 threads. Read-heavy, spread across keys.</li>
+                </ul>
+                <p>Run them locally with <code>npm run benchmark:run</code> (default endpoint <code>http://localhost:8787/api</code>) or against the live site with <code>npm run benchmark:live</code>. Raw YCSB output goes into <code>benchmarks/results/run_&lt;timestamp&gt;/</code>; <code>process_results.py</code> parses it and writes <code>public/benchmarks/&lt;timestamp&gt;/results.json</code> and updates <code>public/benchmarks/index.json</code>.</p>
+
+                <h2>Performance over time</h2>
+                <p>Numbers below come from the parsed <code>results.json</code> files. Throughput is OVERALL ops/sec; latency is 99th percentile in milliseconds (microseconds from YCSB divided by 1000). All runs are local unless noted.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Run (date)</th>
+                            <th>Variant</th>
+                            <th>Throughput (ops/s)</th>
+                            <th>p99 read (ms)</th>
+                            <th>p99 write (ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>2026-02-28 18:16</td><td>Hot Partition Stress</td><td>265</td><td>—</td><td>—</td></tr>
+                        <tr><td>2026-02-28 18:16</td><td>Sustained Mixed Load</td><td>210</td><td>141</td><td>140</td></tr>
+                        <tr><td>2026-02-28 18:16</td><td>Concurrency Scaling</td><td>156</td><td>132</td><td>132</td></tr>
+                        <tr><td>2026-02-28 02:33</td><td>Hot Partition Stress</td><td>433</td><td>79</td><td>83</td></tr>
+                        <tr><td>2026-02-28 02:33</td><td>Sustained Mixed Load</td><td>381</td><td>—</td><td>—</td></tr>
+                        <tr><td>2026-02-28 02:33</td><td>Concurrency Scaling</td><td>340</td><td>—</td><td>—</td></tr>
+                        <tr><td>2026-02-24</td><td>Concurrency Scaling</td><td>121</td><td>—</td><td>—</td></tr>
+                        <tr><td>2026-02-24</td><td>Sustained Mixed Load</td><td>87</td><td>—</td><td>—</td></tr>
+                        <tr><td>2026-02-24</td><td>Hot Partition Stress</td><td>97</td><td>—</td><td>—</td></tr>
+                        <tr><td>2026-02-14</td><td>Hot Partition Stress</td><td>22</td><td>—</td><td>—</td></tr>
+                        <tr><td>2026-02-14</td><td>Sustained Mixed Load</td><td>4</td><td>—</td><td>—</td></tr>
+                        <tr><td>2026-02-13</td><td>Hot Partition Stress</td><td>567</td><td>47</td><td>52</td></tr>
+                        <tr><td>2026-02-13</td><td>Sustained Mixed Load</td><td>576</td><td>43</td><td>45</td></tr>
+                        <tr><td>2026-02-13</td><td>Concurrency Scaling</td><td>471</td><td>—</td><td>—</td></tr>
+                    </tbody>
+                </table>
+                <p class="note">Feb 14 runs used different (larger) workload sizes and were much slower; one Concurrency run that day parsed as 4362 ops/s and is likely an artifact. Feb 24 used reduced record/op counts. Feb 28 runs are after routing cache and metadata caching. For full metrics and raw logs, use <a href="/benchmark-logs.html">Benchmark Logs</a>.</p>
+
+                <h2>Observability</h2>
+                <p>Every request can be inspected by request ID. In the <a href="/playground.html">Playground</a>, send a DynamoDB-style request and use "View trace" to open the trace viewer, or open <a href="/trace.html">trace.html</a> and enter a request ID. The backend calls TraceDO and returns a timeline of events for that request.</p>
+
+                <h2>What I learned</h2>
+                <p>Hot partitions cap throughput: one writer per partition means one serialized write stream. Routing cache and table-metadata caching removed a lot of repeated lookups and helped. The trace viewer made it possible to see where time was spent when something was slow. YCSB is a blunt instrument but good enough to compare runs; the three variants give a rough read on skew vs mixed vs read-heavy. I still don't have a clean answer to "how far DOs can scale" but the numbers above are the current snapshot.</p>
+
+                <h2>How this doc is built</h2>
+                <p>The performance table and the Benchmark Logs page both use data from <code>public/benchmarks/&lt;run_id&gt;/results.json</code>. Those files are produced by <code>benchmarks/process_results.py</code>, which reads YCSB's CSV-style summary lines from the <code>run_*.txt</code> files and aggregates them. When you run <code>npm run benchmark:run</code>, the script copies results into <code>public/benchmarks/</code> and updates <code>index.json</code>. So the single source of truth for "current" numbers is whatever is in that folder after your last run.</p>
+            </article>
+
+            <footer>
+                <div class="footer-links">
+                    <a href="https://github.com/shivamd20/shvm-db">GitHub</a>
+                    <a href="/docs.html">Documentation</a>
+                    <a href="/why.html">Why</a>
+                </div>
+                <p>&copy; 2026 shvm-db. Open source.</p>
+            </footer>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -5,10 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
-        content="shvm-db - A DynamoDB-compatible database built on Cloudflare Durable Objects. No magic. Just physics. Now with Read Replicas.">
+        content="shvm-db - DynamoDB-compatible API on Cloudflare Durable Objects. Experiment to see how far DOs can scale.">
     <meta name="keywords"
         content="shvm-db, DynamoDB, Cloudflare, Durable Objects, distributed database, serverless, edge computing">
-    <title>shvm-db - The Anti-Magic Database</title>
+    <title>shvm-db</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,9 +20,12 @@
     <div class="container">
         <header>
             <a href="/" class="logo">shvm-db</a>
+            <span class="experiment-label">Experiment</span>
             <div class="links">
                 <a href="/index.html#vision">Philosophy</a>
                 <a href="/index.html#scaling">Architecture</a>
+                <a href="/why.html">Why</a>
+                <a href="/blog.html">Blog</a>
                 <a href="/index.html#dist-sys">Distributed Systems</a>
                 <a href="/benchmark-logs.html">Benchmarks</a>
                 <a href="/playground.html">Playground</a>
@@ -33,12 +36,11 @@
 
         <main>
             <section class="hero">
-                <h1>Demystifying<br><span class="gradient-text">DynamoDB</span></h1>
-                <p class="subtitle">A distributed database built from first principles on Cloudflare Durable Objects.
-                    Exact API compatibility with zero magic.</p>
+                <h1>DynamoDB-compatible API on <span class="gradient-text">Durable Objects</span></h1>
+                <p class="subtitle">An experiment to see how far DOs can scale. Same PutItem/GetItem/UpdateItem semantics, one writer per partition, SQLite under the hood. <a href="/why.html">Why this exists</a>.</p>
                 <div class="cta-group">
-                    <a href="/docs.html" class="btn primary">Get Started</a>
-                    <a href="#scaling" class="btn secondary">How it Scales</a>
+                    <a href="/docs.html" class="btn primary">Docs</a>
+                    <a href="#scaling" class="btn secondary">Architecture</a>
                 </div>
                 <div style="margin-top: 2rem; display: flex; justify-content: center;">
                     <a href="https://deploy.workers.cloudflare.com/?url=https://github.com/shivamd20/shvm-db"
@@ -47,28 +49,17 @@
                     </a>
                 </div>
                 <div class="badge">
-                    <span>Beta Release v0.2.0 (Replication Enabled)</span>
+                    <span>v0.2.0 (Replication). Experiment, not for production.</span>
                 </div>
             </section>
 
             <section id="vision" class="vision-section">
                 <div class="vision-grid">
                     <div class="vision-content">
-                        <h2>The Vision</h2>
-                        <p>DynamoDB scales to absurd throughput not because of magic, but because of <strong>brutal
-                                operational discipline</strong>. shvm-db forces you to understand these physics by
-                            rebuilding them yourself.</p>
-                        <h3>Core Principles</h3>
-                        <ul class="vision-list">
-                            <li><strong>Exact Parity:</strong> PutItem, GetItem, Query—same semantics, same constraints.
-                            </li>
-                            <li><strong>Single Writer:</strong> One partition key maps to exactly one Leader Durable
-                                Object.
-                            </li>
-                            <li><strong>Read Replicas:</strong> Automatically provisions read-only replicas when load
-                                spikes.</li>
-                            <li><strong>Zero Layers:</strong> No hidden caches. SQLite is the only source of truth.</li>
-                        </ul>
+                        <h2>What it does</h2>
+                        <p>DynamoDB gets its throughput from partitioning and single-writer discipline. shvm-db rebuilds that model: exact PutItem, GetItem, UpdateItem, DeleteItem semantics; one partition key maps to one Leader Durable Object; read replicas when load spikes; no hidden caches, SQLite is the only source of truth.</p>
+                        <h3>Limitations (MVP)</h3>
+                        <p>No LSI/GSI, no automatic partition splitting, no multi-region. Hot partitions hit a hard ceiling. See the <a href="https://github.com/shivamd20/shvm-db#non-goals-mvp">README</a> for the full list.</p>
                     </div>
                     <div class="vision-image">
                         <pre><code class="language-javascript">// It's just an API call.
@@ -86,8 +77,7 @@ await client.send(new PutItemCommand({
 
             <section id="scaling" class="diagram-section">
                 <h2>Leader-Follower Architecture</h2>
-                <p>We use a strict Leader-Standby-Replica model to guarantee consistency while enabling massive read
-                    concurrency.</p>
+                <p>The system uses a Leader-Standby-Replica model: one writer per partition, replicas consume the log and serve reads.</p>
 
                 <div class="diagram-container">
                     <div class="arch-flow">
@@ -155,33 +145,30 @@ await client.send(new PutItemCommand({
 
             <section id="benchmark" class="benchmark-section">
                 <div class="container">
-                    <h2>Performance Benchmarks</h2>
-                    <p class="subtitle">Real numbers. No fluff.</p>
+                    <h2>Performance (latest run)</h2>
+                    <p class="subtitle">From YCSB runs. Local dev, Feb 2026. See <a href="/benchmark-logs.html">Benchmark Logs</a> for full history.</p>
 
                     <div class="benchmark-grid">
                         <div class="benchmark-card">
-                            <h3>Read Throughput</h3>
-                            <div class="stat">~10k <span class="unit">ops/sec</span></div>
-                            <p>Scaled with Replicas</p>
+                            <h3>Sustained Mixed (ops/s)</h3>
+                            <div class="stat">210 <span class="unit">ops/sec</span></div>
+                            <p>variant_b, local</p>
                         </div>
                         <div class="benchmark-card">
-                            <h3>Write Latency (p90)</h3>
-                            <div class="stat">~17 <span class="unit">ms</span></div>
-                            <p>Local Development</p>
+                            <h3>p99 read latency</h3>
+                            <div class="stat">141 <span class="unit">ms</span></div>
+                            <p>variant_b, same run</p>
                         </div>
                         <div class="benchmark-card">
-                            <h3>Replication Lag</h3>
-                            <div class="stat">&lt; 100 <span class="unit">ms</span></div>
-                            <p>Queue Based</p>
+                            <h3>Hot Partition (ops/s)</h3>
+                            <div class="stat">265 <span class="unit">ops/sec</span></div>
+                            <p>variant_a, local</p>
                         </div>
                     </div>
 
                     <div style="margin-top: 30px; text-align: center;">
-                        <p>We believe in transparency. Run the benchmarks yourself.</p>
-                        <a href="https://github.com/shivamd20/shvm-db/tree/main/benchmarks" class="btn secondary"
-                            target="_blank">
-                            View Benchmark Repo &rarr;
-                        </a>
+                        <p>Run <code>npm run benchmark:run</code> (local) or <code>npm run benchmark:live</code> to reproduce. Raw results in <a href="https://github.com/shivamd20/shvm-db/tree/main/benchmarks">benchmarks/</a>.</p>
+                        <a href="/benchmark-logs.html" class="btn secondary">Benchmark Logs &rarr;</a>
                     </div>
                 </div>
             </section>
@@ -191,13 +178,7 @@ await client.send(new PutItemCommand({
                 <div class="vision-grid">
                     <div class="vision-content">
                         <h2>Distributed Systems Reality</h2>
-                        <p>Building a database at scale means choosing your tradeoffs explicitly. Here is how shvm-db
-                            handles the hard stuff.</p>
-
-                        <h3>Consistency via Monotonicity</h3>
-                        <p>We don't use wall clocks for ordering. Every mutation is assigned a strict monotonic integer
-                            version by the Leader.
-                            Replicas apply updates in strict order, guaranteeing that time never moves backwards.</p>
+                        <p>Tradeoffs are explicit. The system does not use wall clocks for ordering. Every mutation gets a monotonic integer version from the Leader. Replicas apply updates in strict order so time never moves backwards.</p>
 
                         <h3>Backfill & Migration</h3>
                         <p>Replica provisioning is handled by a state machine: <code>CREATED</code> &rarr;
@@ -232,9 +213,11 @@ await client.send(new PutItemCommand({
             <footer>
                 <div class="footer-links">
                     <a href="https://github.com/shivamd20/shvm-db">GitHub</a>
-                    <a href="docs.html">Documentation</a>
+                    <a href="/docs.html">Documentation</a>
+                    <a href="/why.html">Why</a>
+                    <a href="/blog.html">Blog</a>
                 </div>
-                <p>&copy; 2026 shvm-db. Open Source.</p>
+                <p>&copy; 2026 shvm-db. Open source.</p>
             </footer>
         </main>
     </div>

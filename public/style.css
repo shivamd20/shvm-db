@@ -54,6 +54,18 @@ header {
     text-decoration: none;
 }
 
+.experiment-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-left: 10px;
+    padding: 2px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
 .links {
     display: flex;
     align-items: center;

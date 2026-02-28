@@ -19,9 +19,12 @@
     <div class="container">
         <header>
             <a href="/" class="logo">shvm-db</a>
+            <span class="experiment-label">Experiment</span>
             <div class="links">
                 <a href="/index.html#vision">Philosophy</a>
                 <a href="/index.html#scaling">Architecture</a>
+                <a href="/why.html">Why</a>
+                <a href="/blog.html">Blog</a>
                 <a href="/index.html#dist-sys">Distributed Systems</a>
                 <a href="/benchmark-logs.html">Benchmarks</a>
                 <a href="/playground.html">Playground</a>
@@ -51,8 +54,7 @@
             <article class="docs-content">
                 <section id="quickstart">
                     <h1>Documentation</h1>
-                    <p>Welcome to shvm-db documentation. This guide will help you connect to your database instance and
-                        run your first commands.</p>
+                    <p>Connect to the database and run your first commands. You can inspect any request by request ID in the <a href="/trace.html">trace viewer</a> (use "View trace" from the <a href="/playground.html">Playground</a> after sending a request).</p>
 
                     <h2>Quickstart</h2>
                     <p>All requests to shvm-db follow the DynamoDB JSON protocol. You can use any standard HTTP client
@@ -187,15 +189,12 @@ curl -X POST https://shvm-db.workers.dev/api \
 
                     <h3>Monotonicity</h3>
                     <p>
-                        Even if you read from different replicas, you made see older data if you switch to a more
-                        lagging replica,
-                        but the system state converges to the Leader's strict order.
+                        If you read from different replicas, you may see older data when switching to a more lagging replica; the system state still converges to the Leader's strict order.
                     </p>
                 </section>
 
                 <footer>
-                    <p>Need help? Check out the <a href="https://github.com/shivamd20/shvm-db"
-                            style="color: var(--primary-color);">GitHub Repo</a>.</p>
+                    <p>See also <a href="/why.html">Why</a>, <a href="/blog.html">Blog</a>, and the <a href="https://github.com/shivamd20/shvm-db" style="color: var(--primary-color);">GitHub repo</a>.</p>
                 </footer>
             </article>
         </main>

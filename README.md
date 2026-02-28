@@ -424,3 +424,5 @@ Because once you finish this:
 
 This is not a toy.
 This is a **forge**.
+
+The live site has a short [Why](https://db.shvm.in/why.html) page and an [experiment blog](https://db.shvm.in/blog.html) with the full journey and benchmark notes.

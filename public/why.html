@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Why shvm-db exists: an experiment to see how far Cloudflare Durable Objects can scale as a DynamoDB-compatible store.">
+    <title>Why - shvm-db</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&family=Fira+Code&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="logo">shvm-db</a>
+            <span class="experiment-label">Experiment</span>
+            <div class="links">
+                <a href="/index.html#vision">Philosophy</a>
+                <a href="/index.html#scaling">Architecture</a>
+                <a href="/why.html" class="active">Why</a>
+                <a href="/blog.html">Blog</a>
+                <a href="/index.html#dist-sys">Distributed Systems</a>
+                <a href="/benchmark-logs.html">Benchmarks</a>
+                <a href="/playground.html">Playground</a>
+                <a href="/docs.html">Docs</a>
+                <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero" style="min-height: auto; padding: 4rem 0 2rem;">
+                <h1>Why <span class="gradient-text">this exists</span></h1>
+                <p class="subtitle">One page on the motivation behind the experiment.</p>
+            </section>
+
+            <article class="docs-content" style="max-width: 720px; margin: 0 auto 4rem;">
+                <p>DynamoDB gets a lot of throughput. A lot of that comes from partitioning, routing, and operational discipline, not from a special storage engine. I wanted to see how much of that model I could rebuild with pieces I could actually run and measure.</p>
+
+                <h2>Why rebuild a DynamoDB-like API?</h2>
+                <p>So I could see where the bottlenecks are. Once you route by partition key, run one writer per partition, and put SQLite behind it, you get a clear mental model. No hidden caches, no magic. The goal was to get exact PutItem/GetItem/UpdateItem/DeleteItem semantics and strong per-partition consistency, then benchmark and iterate.</p>
+
+                <h2>Why Cloudflare Durable Objects?</h2>
+                <p>Each DO has a single-threaded, single-writer guarantee. That maps cleanly to one partition = one writer. I didn't have to build coordination; the runtime gives it. The question was: how far can DOs scale for this kind of workload? This project is an attempt to answer that, not to sell a product.</p>
+
+                <h2>Why this stack?</h2>
+                <p>SQLite per partition: simple, debuggable, and the only source of truth in the MVP. Queues for replication so reads can fan out to replicas. R2 is in the roadmap for durability and recovery, but the current experiment runs without it. The idea was to keep the pipeline understandable so that when numbers change, I know why.</p>
+
+                <h2>What this is not</h2>
+                <p>It is not a DynamoDB replacement. It is not tuned for production. There is no LSI/GSI, no automatic partition splitting, no multi-region. Hot partitions hit a hard ceiling. The point is to learn how the architecture behaves, not to ship it as a service.</p>
+
+                <p>For the longer story and how the system evolved, see the <a href="/blog.html">experiment blog</a>.</p>
+            </article>
+
+            <footer>
+                <div class="footer-links">
+                    <a href="https://github.com/shivamd20/shvm-db">GitHub</a>
+                    <a href="/docs.html">Documentation</a>
+                    <a href="/blog.html">Blog</a>
+                </div>
+                <p>&copy; 2026 shvm-db. Open source.</p>
+            </footer>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

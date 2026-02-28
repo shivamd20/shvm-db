@@ -155,9 +155,12 @@
     <div class="container">
         <header>
             <a href="/" class="logo">shvm-db</a>
+            <span class="experiment-label">Experiment</span>
             <div class="links">
                 <a href="/index.html#vision">Philosophy</a>
                 <a href="/index.html#scaling">Architecture</a>
+                <a href="/why.html">Why</a>
+                <a href="/blog.html">Blog</a>
                 <a href="/index.html#dist-sys">Distributed Systems</a>
                 <a href="/benchmark-logs.html" class="active">Benchmarks</a>
                 <a href="/playground.html">Playground</a>
@@ -169,7 +172,8 @@
         <main>
             <section class="hero" style="min-height: auto; padding: 4rem 0 2rem;">
                 <h1>Benchmark <span class="gradient-text">Logs</span></h1>
-                <p class="subtitle">Inspect performance runs in detail. Transparency is key.</p>
+                <p class="subtitle">Per-run YCSB results and latency histograms. Runs come from <code>npm run benchmark:run</code> (local) or <code>npm run benchmark:live</code>.</p>
+                <p class="subtitle" style="margin-top: 0.5rem; font-size: 0.9rem; color: #888;">Variants: Hot Partition Stress (variant_a), Sustained Mixed Load (variant_b), Concurrency Scaling (variant_c). See <a href="/blog.html">Blog</a> for workload details.</p>
             </section>
 
             <div class="benchmark-container">
@@ -185,9 +189,11 @@
             <footer>
                 <div class="footer-links">
                     <a href="https://github.com/shivamd20/shvm-db">GitHub</a>
-                    <a href="docs.html">Documentation</a>
+                    <a href="/docs.html">Documentation</a>
+                    <a href="/why.html">Why</a>
+                    <a href="/blog.html">Blog</a>
                 </div>
-                <p>&copy; 2026 shvm-db. Open Source.</p>
+                <p>&copy; 2026 shvm-db. Open source.</p>
             </footer>
         </main>
     </div>
