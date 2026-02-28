@@ -3,6 +3,9 @@ import { TraceDOQueries } from "./sql/queries";
 import type { TraceEvent } from "./trace-types";
 
 const TRACE_RETENTION_MS = 2 * 60 * 60 * 1000; // 2 hours
+const TRACE_FLUSH_DELAY_MS = 2000;
+/** SQLite max bind params is 999; 7 params per row -> chunk at 100 */
+const TRACE_INSERT_CHUNK_SIZE = 100;
 
 export interface Env {
 	TRACE_DO: DurableObjectNamespace<TraceDO>;
@@ -10,6 +13,7 @@ export interface Env {
 
 export class TraceDO extends DurableObject<Env> {
 	sql: SqlStorage;
+	private pendingEvents: TraceEvent[] = [];
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
@@ -17,36 +21,49 @@ export class TraceDO extends DurableObject<Env> {
 		this.sql.exec(TraceDOQueries.Schema.CREATE_EVENTS);
 	}
 
-	async recordEvent(event: TraceEvent): Promise<void> {
+	private scheduleFlushAlarm(): void {
+		this.ctx.storage.setAlarm(Date.now() + TRACE_FLUSH_DELAY_MS);
+	}
+
+	async alarm(): Promise<void> {
+		const snapshot = this.pendingEvents;
+		this.pendingEvents = [];
+		if (snapshot.length === 0) return;
+
 		const now = Date.now();
-		this.sql.exec(
-			TraceDOQueries.Events.INSERT,
-			event.requestId,
-			event.step,
-			event.startMs,
-			event.durationMs,
-			event.parent ?? null,
-			event.attributes ? JSON.stringify(event.attributes) : null,
-			now
-		);
+		for (let off = 0; off < snapshot.length; off += TRACE_INSERT_CHUNK_SIZE) {
+			const chunk = snapshot.slice(off, off + TRACE_INSERT_CHUNK_SIZE);
+			const placeholders = chunk.map(() => "(?, ?, ?, ?, ?, ?, ?)").join(", ");
+			const sql = `INSERT INTO trace_events (request_id, step, start_ms, duration_ms, parent, attributes, created_at) VALUES ${placeholders}`;
+			const params: (string | number | null)[] = [];
+			for (const e of chunk) {
+				params.push(
+					e.requestId,
+					e.step,
+					e.startMs,
+					e.durationMs,
+					e.parent ?? null,
+					e.attributes ? JSON.stringify(e.attributes) : null,
+					now
+				);
+			}
+			this.sql.exec(sql, ...params);
+		}
 		this.evictOldTraces(now - TRACE_RETENTION_MS);
+
+		if (this.pendingEvents.length > 0) this.scheduleFlushAlarm();
+	}
+
+	async recordEvent(event: TraceEvent): Promise<void> {
+		this.pendingEvents.push(event);
+		const currentAlarm = await this.ctx.storage.getAlarm();
+		if (currentAlarm == null) this.scheduleFlushAlarm();
 	}
 
 	async recordEvents(events: TraceEvent[]): Promise<void> {
-		const now = Date.now();
-		for (const e of events) {
-			this.sql.exec(
-				TraceDOQueries.Events.INSERT,
-				e.requestId,
-				e.step,
-				e.startMs,
-				e.durationMs,
-				e.parent ?? null,
-				e.attributes ? JSON.stringify(e.attributes) : null,
-				now
-			);
-		}
-		this.evictOldTraces(now - TRACE_RETENTION_MS);
+		this.pendingEvents.push(...events);
+		const currentAlarm = await this.ctx.storage.getAlarm();
+		if (currentAlarm == null) this.scheduleFlushAlarm();
 	}
 
 	private evictOldTraces(olderThanMs: number): void {
@@ -61,7 +78,7 @@ export class TraceDO extends DurableObject<Env> {
 		this.evictOldTraces(Date.now() - TRACE_RETENTION_MS);
 		const cursor = this.sql.exec(TraceDOQueries.Events.GET_BY_REQUEST, requestId);
 		const rows = Array.from(cursor) as any[];
-		return rows.map(r => ({
+		const fromDb = rows.map(r => ({
 			requestId: r.request_id,
 			step: r.step,
 			startMs: r.start_ms,
@@ -69,5 +86,9 @@ export class TraceDO extends DurableObject<Env> {
 			parent: r.parent ?? undefined,
 			attributes: r.attributes ? JSON.parse(r.attributes) : undefined
 		}));
+		const fromPending = this.pendingEvents.filter(e => e.requestId === requestId);
+		const combined = [...fromDb, ...fromPending];
+		combined.sort((a, b) => a.startMs - b.startMs);
+		return combined;
 	}
 }

@@ -9,6 +9,17 @@ import { SubDOQueries } from "./sql/queries";
 import type { TraceEvent } from "./trace-types";
 
 const TRACE_DO_SINGLETON_NAME = "shvm-db-trace";
+const SUB_DO_FLUSH_DELAY_MS = 50;
+/** SQLite max bind params is 999; 4 params per row -> chunk at 200 */
+const SUB_DO_INSERT_CHUNK_SIZE = 200;
+
+interface PendingWrite {
+	sk: string;
+	value: unknown;
+	deleted: number;
+	partitionId: number;
+	tableName: string;
+}
 
 export interface Env {
     PARTITION_DO: DurableObjectNamespace<PartitionDO>;
@@ -31,6 +42,9 @@ export class SubDO extends DurableObject<Env> {
     replicaState: ReplicaState = ReplicaState.CREATED;
     lastAppliedVersion: number = 0;
     migrationTargetVersion: number = 0;
+
+    /** Pending writes (write-through buffer). Flushed by alarm. */
+    private pendingWrites: PendingWrite[] = [];
 
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env);
@@ -92,28 +106,73 @@ export class SubDO extends DurableObject<Env> {
         this.sql.exec(SubDOQueries.Cursors.SET, "lastApplied", v);
     }
 
-    // --- LEADER ONLY ---
-
-    private getNextVersion(): number {
-        // Atomic increment
-        // In SQLite DO, we can use a sequence or just a singleton row
-        this.sql.exec(SubDOQueries.Cursors.INIT_SEQ);
-        this.sql.exec(SubDOQueries.Cursors.INC_SEQ);
-        const cursor = this.sql.exec(SubDOQueries.Cursors.GET_SEQ);
-        const row = Array.from(cursor)[0] as any;
-        return row!.val as number;
+    /** Returns latest value for sk from pending (by insertion order). undefined = not in pending; null = deleted. */
+    private getLatestPending(sk: string): unknown | undefined {
+        for (let i = this.pendingWrites.length - 1; i >= 0; i--) {
+            if (this.pendingWrites[i].sk === sk) {
+                return this.pendingWrites[i].deleted === 1 ? null : this.pendingWrites[i].value;
+            }
+        }
+        return undefined;
     }
+
+    private scheduleFlushAlarm(): void {
+        this.ctx.storage.setAlarm(Date.now() + SUB_DO_FLUSH_DELAY_MS);
+    }
+
+    async alarm(): Promise<void> {
+        const snapshot = this.pendingWrites;
+        this.pendingWrites = [];
+        if (snapshot.length === 0) return;
+
+        this.sql.exec(SubDOQueries.Cursors.INIT_SEQ);
+        const seqCursor = this.sql.exec(SubDOQueries.Cursors.GET_SEQ);
+        const seqRow = Array.from(seqCursor)[0] as any;
+        const V = (seqRow?.val as number) ?? 0;
+
+        const n = snapshot.length;
+        for (let off = 0; off < n; off += SUB_DO_INSERT_CHUNK_SIZE) {
+            const chunk = snapshot.slice(off, off + SUB_DO_INSERT_CHUNK_SIZE);
+            const valuePlaceholders = chunk.map(() => "(?, ?, ?, ?)").join(", ");
+            const batchInsertSql = `INSERT INTO items_v2 (sk, version, value, deleted) VALUES ${valuePlaceholders}`;
+            const params: (string | number | null)[] = [];
+            for (let i = 0; i < chunk.length; i++) {
+                const e = chunk[i];
+                params.push(e.sk, V + 1 + off + i, e.deleted === 0 ? JSON.stringify(e.value) : null, e.deleted);
+            }
+            this.sql.exec(batchInsertSql, ...params);
+        }
+        this.sql.exec(SubDOQueries.Cursors.INC_SEQ_BY_N, n);
+        this.sql.exec(SubDOQueries.Cursors.SET, "lastApplied", V + n);
+        this.lastAppliedVersion = V + n;
+
+        await Promise.all(snapshot.map((e, i) => {
+            const version = V + 1 + i;
+            if (e.deleted === 1) {
+                return this.env.REPLICATION_QUEUE.send({
+                    type: 'DELETE', sk: e.sk, version, partitionId: e.partitionId, tableName: e.tableName, replicationFactor: 0
+                });
+            }
+            return this.env.REPLICATION_QUEUE.send({
+                type: 'PUT', sk: e.sk, value: e.value, version, partitionId: e.partitionId, tableName: e.tableName, replicationFactor: 0
+            });
+        }));
+
+        if (this.pendingWrites.length > 0) this.scheduleFlushAlarm();
+    }
+
+    // --- LEADER ONLY ---
 
     async putItem(sk: string, value: unknown, partitionId: number, tableName: string = 'default', requestId?: string): Promise<void> {
         const startMs = 0;
         const t0 = Date.now();
         if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
-        const version = this.getNextVersion();
-        this.log("SubDO", `[LEADER] putItem sk=${sk} v=${version} partition=${partitionId} table=${tableName}`);
-        this.applyToLocal(sk, version, value, 0);
-        await this.env.REPLICATION_QUEUE.send({
-            type: 'PUT', sk, value, version, partitionId, tableName, replicationFactor: 0
-        });
+        this.log("SubDO", `[LEADER] putItem sk=${sk} partition=${partitionId} table=${tableName} (pending)`);
+        this.pendingWrites.push({ sk, value, deleted: 0, partitionId, tableName });
+        this.lru.put(sk, value);
+        this.bf.add(sk);
+        const currentAlarm = await this.ctx.storage.getAlarm();
+        if (currentAlarm == null) this.scheduleFlushAlarm();
         this.recordTrace(requestId, "subdo_put_item", startMs, Date.now() - t0);
     }
 
@@ -121,12 +180,11 @@ export class SubDO extends DurableObject<Env> {
         const startMs = 0;
         const t0 = Date.now();
         if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
-        const version = this.getNextVersion();
-        this.log("SubDO", `[LEADER] deleteItem sk=${sk} v=${version} partition=${partitionId} table=${tableName}`);
-        this.applyToLocal(sk, version, null, 1);
-        await this.env.REPLICATION_QUEUE.send({
-            type: 'DELETE', sk, version, partitionId, tableName, replicationFactor: 0
-        });
+        this.log("SubDO", `[LEADER] deleteItem sk=${sk} partition=${partitionId} table=${tableName} (pending)`);
+        this.pendingWrites.push({ sk, value: null, deleted: 1, partitionId, tableName });
+        this.lru.remove(sk);
+        const currentAlarm = await this.ctx.storage.getAlarm();
+        if (currentAlarm == null) this.scheduleFlushAlarm();
         this.recordTrace(requestId, "subdo_delete_item", startMs, Date.now() - t0);
     }
 
@@ -134,23 +192,33 @@ export class SubDO extends DurableObject<Env> {
         const startMs = 0;
         const t0 = Date.now();
         if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
-        const version = this.getNextVersion();
-        this.log("SubDO", `[LEADER] updateItem sk=${sk} v=${version} partition=${partitionId} table=${tableName}`);
         let currentItem: Record<string, any> = {};
-        const cursor = this.sql.exec(SubDOQueries.Items.GET_LATEST, sk);
-        const row = Array.from(cursor)[0] as any;
-        if (row && (row.deleted as number) === 0) {
-            try { currentItem = JSON.parse(row.value as string); } catch (e) { this.log("SubDO", `Error parsing existing item for update sk=${sk}: ${e}`); }
+        const fromPending = this.getLatestPending(sk);
+        if (fromPending !== undefined) {
+            if (fromPending !== null) currentItem = fromPending as Record<string, any>;
+        } else {
+            const cached = this.lru.get(sk);
+            if (cached !== undefined) {
+                currentItem = cached as Record<string, any>;
+            } else {
+                const cursor = this.sql.exec(SubDOQueries.Items.GET_LATEST, sk);
+                const row = Array.from(cursor)[0] as any;
+                if (row && (row.deleted as number) === 0) {
+                    try { currentItem = JSON.parse(row.value as string); } catch (e) { this.log("SubDO", `Error parsing existing item for update sk=${sk}: ${e}`); }
+                }
+            }
         }
         for (const [key, update] of Object.entries(updates)) {
             const action = update.Action || 'PUT';
             if (action === 'PUT') currentItem[key] = update.Value;
             else if (action === 'DELETE') delete currentItem[key];
         }
-        this.applyToLocal(sk, version, currentItem, 0);
-        await this.env.REPLICATION_QUEUE.send({
-            type: 'PUT', sk, value: currentItem, version, partitionId, tableName, replicationFactor: 0
-        });
+        this.log("SubDO", `[LEADER] updateItem sk=${sk} partition=${partitionId} table=${tableName} (pending)`);
+        this.pendingWrites.push({ sk, value: currentItem, deleted: 0, partitionId, tableName });
+        this.lru.put(sk, currentItem);
+        this.bf.add(sk);
+        const currentAlarm = await this.ctx.storage.getAlarm();
+        if (currentAlarm == null) this.scheduleFlushAlarm();
         this.recordTrace(requestId, "subdo_update_item", startMs, Date.now() - t0);
     }
 
@@ -286,6 +354,12 @@ export class SubDO extends DurableObject<Env> {
         this.log("SubDO", `getItem sk=${sk} role=${this.role} state=${this.replicaState}`);
         if (this.replicaState !== ReplicaState.READABLE && this.role !== Role.LEADER && this.role !== Role.STANDBY) {
             throw new Error(`Replica not readable yet. State: ${this.replicaState}`);
+        }
+        const fromPending = this.getLatestPending(sk);
+        if (fromPending !== undefined) {
+            this.log("SubDO", `getItem PENDING sk=${sk}`);
+            this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { source: "pending" });
+            return fromPending;
         }
         const cached = this.lru.get(sk);
         if (cached !== undefined) {

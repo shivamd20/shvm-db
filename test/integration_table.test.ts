@@ -138,4 +138,29 @@ describe("Table Modeling Integration", () => {
         const body = await res.json() as any;
         expect(body.Item).toBeUndefined(); // Should not find the item from the other table
     });
+
+    it("should return trace events for a request (Load trace)", async () => {
+        const item = {
+            TableName: tableName,
+            Item: {
+                PK: { S: "trace-user" },
+                SK: { S: "trace-sk" },
+                Data: { S: "trace test" }
+            }
+        };
+        const putRes = await client.dynamoRequest("DynamoDB_20120810.PutItem", item);
+        expect(putRes.status).toBe(200);
+        const requestId = putRes.headers.get("x-request-id") || putRes.headers.get("X-Request-Id");
+        expect(requestId).toBeDefined();
+
+        const traceRes = await client.fetch(`/api/trace?requestId=${encodeURIComponent(requestId!)}`);
+        expect(traceRes.status).toBe(200);
+        const traceBody = await traceRes.json() as { requestId: string; events: Array<{ step: string; requestId: string }> };
+        expect(traceBody.requestId).toBe(requestId);
+        expect(Array.isArray(traceBody.events)).toBe(true);
+        expect(traceBody.events.length).toBeGreaterThan(0);
+        const steps = traceBody.events.map((e: any) => e.step);
+        expect(steps).toContain("request");
+        expect(steps.some((s: string) => s.includes("metadata") || s.includes("put") || s.includes("do_"))).toBe(true);
+    });
 });

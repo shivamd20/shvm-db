@@ -31,6 +31,7 @@ export const SubDOQueries = {
         SET: "INSERT OR REPLACE INTO cursors (id, val) VALUES (?, ?)",
         INIT_SEQ: "INSERT OR IGNORE INTO cursors (id, val) VALUES ('global_seq', 0)",
         INC_SEQ: "UPDATE cursors SET val = val + 1 WHERE id = 'global_seq'",
+        INC_SEQ_BY_N: "UPDATE cursors SET val = val + ? WHERE id = 'global_seq'",
         GET_SEQ: "SELECT val FROM cursors WHERE id = 'global_seq'"
     },
     Items: {
