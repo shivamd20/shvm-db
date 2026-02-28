@@ -7,8 +7,8 @@ workload=site.ycsb.workloads.CoreWorkload
 # -----------------------------
 # Dataset size (small to amplify hot keys)
 # -----------------------------
-recordcount=5000
-operationcount=30000
+recordcount=500
+operationcount=3000
 
 # -----------------------------
 # Operation mix

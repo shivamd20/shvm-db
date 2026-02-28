@@ -1,0 +1,604 @@
+{
+  "id": "20260228_181637",
+  "timestamp": "20260228_181637",
+  "results": [
+    {
+      "variant": "Sustained Mixed Load",
+      "metrics": {
+        "2026-02-28 18:19:39:736 10 sec: 2044 operations; 204.38 current ops/sec; est completion in 6 minutes [READ: Count=1226": {
+          "Max=328959": "Min=3418"
+        },
+        "2026-02-28 18:19:49:736 20 sec: 3968 operations; 192.4 current ops/sec; est completion in 6 minutes [READ: Count=1133": {
+          "Max=237439": "Min=4668"
+        },
+        "2026-02-28 18:19:59:737 30 sec: 6077 operations; 210.9 current ops/sec; est completion in 6 minutes [READ: Count=1294": {
+          "Max=162431": "Min=2958"
+        },
+        "2026-02-28 18:20:09:736 40 sec: 8372 operations; 229.52 current ops/sec; est completion in 5 minutes [READ: Count=1356": {
+          "Max=163711": "Min=2292"
+        },
+        "2026-02-28 18:20:19:740 50 sec: 10549 operations; 217.59 current ops/sec; est completion in 5 minutes [READ: Count=1292": {
+          "Max=153471": "Min=2258"
+        },
+        "2026-02-28 18:20:29:740 60 sec: 12716 operations; 216.7 current ops/sec; est completion in 5 minutes [READ: Count=1306": {
+          "Max=246783": "Min=3210"
+        },
+        "2026-02-28 18:20:39:740 70 sec: 14982 operations; 226.6 current ops/sec; est completion in 5 minutes [READ: Count=1414": {
+          "Max=258943": "Min=2482"
+        },
+        "2026-02-28 18:20:49:737 80 sec: 17274 operations; 229.27 current ops/sec; est completion in 4 minutes [READ: Count=1371": {
+          "Max=390911": "Min=2846"
+        },
+        "2026-02-28 18:20:59:739 90 sec: 19518 operations; 224.36 current ops/sec; est completion in 4 minutes [READ: Count=1313": {
+          "Max=200319": "Min=2282"
+        },
+        "2026-02-28 18:21:09:740 100 sec: 21782 operations; 226.38 current ops/sec; est completion in 4 minutes [READ: Count=1379": {
+          "Max=208383": "Min=2578"
+        },
+        "2026-02-28 18:21:19:737 110 sec: 24002 operations; 222.07 current ops/sec; est completion in 4 minutes [READ: Count=1353": {
+          "Max=195455": "Min=2724"
+        },
+        "2026-02-28 18:21:29:739 120 sec: 26249 operations; 224.66 current ops/sec; est completion in 4 minutes [READ: Count=1339": {
+          "Max=264191": "Min=2734"
+        },
+        "2026-02-28 18:21:39:735 130 sec: 28474 operations; 222.59 current ops/sec; est completion in 3 minutes [READ: Count=1359": {
+          "Max=175615": "Min=2722"
+        },
+        "2026-02-28 18:21:49:735 140 sec: 30751 operations; 227.7 current ops/sec; est completion in 3 minutes [READ: Count=1383": {
+          "Max=145791": "Min=3056"
+        },
+        "2026-02-28 18:21:59:739 150 sec: 32786 operations; 203.42 current ops/sec; est completion in 3 minutes [READ: Count=1224": {
+          "Max=242815": "Min=3418"
+        },
+        "2026-02-28 18:22:09:740 160 sec: 34872 operations; 208.6 current ops/sec; est completion in 3 minutes [READ: Count=1254": {
+          "Max=222079": "Min=2600"
+        },
+        "2026-02-28 18:22:19:735 170 sec: 36828 operations; 195.68 current ops/sec; est completion in 3 minutes [READ: Count=1181": {
+          "Max=217471": "Min=5404"
+        },
+        "2026-02-28 18:22:29:739 180 sec: 38881 operations; 205.24 current ops/sec; est completion in 3 minutes [READ: Count=1237": {
+          "Max=206463": "Min=2318"
+        },
+        "2026-02-28 18:22:39:737 190 sec: 41071 operations; 219.02 current ops/sec; est completion in 3 minutes [READ: Count=1357": {
+          "Max=217087": "Min=3480"
+        },
+        "2026-02-28 18:22:49:736 200 sec: 43324 operations; 225.32 current ops/sec; est completion in 2 minutes [READ: Count=1368": {
+          "Max=221439": "Min=4692"
+        },
+        "2026-02-28 18:22:59:739 210 sec: 45427 operations; 210.24 current ops/sec; est completion in 2 minutes [READ: Count=1284": {
+          "Max=270335": "Min=2178"
+        },
+        "2026-02-28 18:23:09:738 220 sec: 47580 operations; 215.32 current ops/sec; est completion in 2 minutes [READ: Count=1312": {
+          "Max=168191": "Min=3686"
+        },
+        "2026-02-28 18:23:19:739 230 sec: 49812 operations; 223.2 current ops/sec; est completion in 2 minutes [READ: Count=1305": {
+          "Max=186239": "Min=2124"
+        },
+        "2026-02-28 18:23:29:737 240 sec: 51706 operations; 189.42 current ops/sec; est completion in 2 minutes [READ: Count=1153": {
+          "Max=273407": "Min=3368"
+        },
+        "2026-02-28 18:23:39:737 250 sec: 53793 operations; 208.72 current ops/sec; est completion in 2 minutes [READ: Count=1276": {
+          "Max=289279": "Min=2778"
+        },
+        "2026-02-28 18:23:49:737 260 sec: 55964 operations; 217.1 current ops/sec; est completion in 1 minute [READ: Count=1306": {
+          "Max=206591": "Min=2914"
+        },
+        "2026-02-28 18:23:59:735 270 sec: 58187 operations; 222.32 current ops/sec; est completion in 1 minute [READ: Count=1321": {
+          "Max=169855": "Min=2808"
+        },
+        "2026-02-28 18:24:09:738 280 sec: 60148 operations; 196.06 current ops/sec; est completion in 1 minute [READ: Count=1219": {
+          "Max=257663": "Min=3646"
+        },
+        "2026-02-28 18:24:19:738 290 sec: 62090 operations; 194.18 current ops/sec; est completion in 1 minute [READ: Count=1133": {
+          "Max=192767": "Min=3106"
+        },
+        "2026-02-28 18:24:29:736 300 sec: 64046 operations; 195.64 current ops/sec; est completion in 1 minute [READ: Count=1186": {
+          "Max=311807": "Min=4712"
+        },
+        "2026-02-28 18:24:39:740 310 sec: 65886 operations; 183.93 current ops/sec; est completion in 1 minute [READ: Count=1110": {
+          "Max=439551": "Min=2500"
+        },
+        "2026-02-28 18:24:49:737 320 sec: 67412 operations; 152.66 current ops/sec; est completion in 1 minute [READ: Count=927": {
+          "Max=527359": "Min=2556"
+        },
+        "2026-02-28 18:24:59:741 330 sec: 69413 operations; 200.02 current ops/sec; est completion in 51 seconds [READ: Count=1181": {
+          "Max=223615": "Min=2734"
+        },
+        "2026-02-28 18:25:09:741 340 sec: 71466 operations; 205.3 current ops/sec; est completion in 41 seconds [READ: Count=1255": {
+          "Max=254975": "Min=4648"
+        },
+        "2026-02-28 18:25:19:741 350 sec: 73638 operations; 217.2 current ops/sec; est completion in 31 seconds [READ: Count=1313": {
+          "Max=168447": "Min=5212"
+        },
+        "2026-02-28 18:25:29:740 360 sec: 75777 operations; 213.9 current ops/sec; est completion in 21 seconds [READ: Count=1264": {
+          "Max=380415": "Min=3252"
+        },
+        "2026-02-28 18:25:39:738 370 sec: 77873 operations; 209.66 current ops/sec; est completion in 11 seconds [READ: Count=1285": {
+          "Max=178815": "Min=3356"
+        },
+        "2026-02-28 18:25:49:736 380 sec: 79901 operations; 202.82 current ops/sec; est completion in 1 second [READ: Count=1186": {
+          "Max=271871": "Min=2544"
+        },
+        "2026-02-28 18:25:50:406 380 sec: 80000 operations; 147.76 current ops/sec; [READ: Count=58": {
+          "Max=66623": "Min=2116"
+        },
+        "OVERALL": {
+          "RunTime(ms)": 380671.0,
+          "Throughput(ops/sec)": 210.15522590373314
+        },
+        "TOTAL_GCS_G1_Young_Generation": {
+          "Count": 25.0
+        },
+        "TOTAL_GC_TIME_G1_Young_Generation": {
+          "Time(ms)": 84.0
+        },
+        "TOTAL_GC_TIME_%_G1_Young_Generation": {
+          "Time(%)": 0.02206629871989198
+        },
+        "TOTAL_GCS_G1_Concurrent_GC": {
+          "Count": 0.0
+        },
+        "TOTAL_GC_TIME_G1_Concurrent_GC": {
+          "Time(ms)": 0.0
+        },
+        "TOTAL_GC_TIME_%_G1_Concurrent_GC": {
+          "Time(%)": 0.0
+        },
+        "TOTAL_GCS_G1_Old_Generation": {
+          "Count": 0.0
+        },
+        "TOTAL_GC_TIME_G1_Old_Generation": {
+          "Time(ms)": 0.0
+        },
+        "TOTAL_GC_TIME_%_G1_Old_Generation": {
+          "Time(%)": 0.0
+        },
+        "TOTAL_GCs": {
+          "Count": 25.0
+        },
+        "TOTAL_GC_TIME": {
+          "Time(ms)": 84.0
+        },
+        "TOTAL_GC_TIME_%": {
+          "Time(%)": 0.02206629871989198
+        },
+        "READ": {
+          "Operations": 48213.0,
+          "AverageLatency(us)": 28295.037209881153,
+          "MinLatency(us)": 2116.0,
+          "MaxLatency(us)": 527359.0,
+          "50thPercentileLatency(us)": 12311.0,
+          "90thPercentileLatency(us)": 62783.0,
+          "95thPercentileLatency(us)": 85951.0,
+          "99thPercentileLatency(us)": 141183.0,
+          "99.9PercentileLatency(us)": 246527.0,
+          "Return=OK": 48213.0
+        },
+        "CLEANUP": {
+          "Operations": 6.0,
+          "AverageLatency(us)": 2.5,
+          "MinLatency(us)": 1.0,
+          "MaxLatency(us)": 10.0,
+          "50thPercentileLatency(us)": 1.0,
+          "90thPercentileLatency(us)": 10.0,
+          "95thPercentileLatency(us)": 10.0,
+          "99thPercentileLatency(us)": 10.0,
+          "99.9PercentileLatency(us)": 10.0
+        },
+        "UPDATE": {
+          "Operations": 19704.0,
+          "AverageLatency(us)": 28702.104801055622,
+          "MinLatency(us)": 2170.0,
+          "MaxLatency(us)": 393215.0,
+          "50thPercentileLatency(us)": 12719.0,
+          "90thPercentileLatency(us)": 63583.0,
+          "95thPercentileLatency(us)": 86079.0,
+          "99thPercentileLatency(us)": 140287.0,
+          "99.9PercentileLatency(us)": 230015.0,
+          "Return=OK": 19704.0
+        },
+        "INSERT": {
+          "Operations": 12083.0,
+          "AverageLatency(us)": 28554.08722999255,
+          "MinLatency(us)": 2678.0,
+          "MaxLatency(us)": 391423.0,
+          "50thPercentileLatency(us)": 12751.0,
+          "90thPercentileLatency(us)": 63007.0,
+          "95thPercentileLatency(us)": 85631.0,
+          "99thPercentileLatency(us)": 145535.0,
+          "99.9PercentileLatency(us)": 237439.0,
+          "Return=OK": 12083.0
+        }
+      },
+      "config": {
+        "workload": "site.ycsb.workloads.CoreWorkload",
+        "recordcount": "2000",
+        "operationcount": "8000",
+        "readallfields": "true",
+        "readproportion": "0.6",
+        "updateproportion": "0.25",
+        "insertproportion": "0.15",
+        "scanproportion": "0",
+        "requestdistribution": "latest",
+        "db": "site.ycsb.db.DynamoDBClient",
+        "dynamodb.endpoint": "http://localhost:8787",
+        "threadcount": "6",
+        "measurementtype": "hdrhistogram",
+        "hdrhistogram.percentiles": "50,90,95,99,99.9"
+      },
+      "raw_file": "run_variant_b_20260228_181637.txt"
+    },
+    {
+      "variant": "Concurrency Scaling",
+      "metrics": {
+        "2026-02-28 18:26:43:173 10 sec: 1431 operations; 143.06 current ops/sec; est completion in 6 minutes [READ: Count=1132": {
+          "Max=457215": "Min=3366"
+        },
+        "2026-02-28 18:26:53:173 20 sec: 2945 operations; 151.4 current ops/sec; est completion in 6 minutes [READ: Count=1221": {
+          "Max=255871": "Min=2356"
+        },
+        "2026-02-28 18:27:03:175 30 sec: 4553 operations; 160.78 current ops/sec; est completion in 6 minutes [READ: Count=1307": {
+          "Max=270591": "Min=3742"
+        },
+        "2026-02-28 18:27:13:170 40 sec: 5897 operations; 134.45 current ops/sec; est completion in 6 minutes [READ: Count=1047": {
+          "Max=239359": "Min=3920"
+        },
+        "2026-02-28 18:27:23:183 50 sec: 7381 operations; 148.31 current ops/sec; est completion in 5 minutes [READ: Count=1195": {
+          "Max=382719": "Min=2804"
+        },
+        "2026-02-28 18:27:33:175 60 sec: 8831 operations; 145.01 current ops/sec; est completion in 5 minutes [READ: Count=1192": {
+          "Max=222079": "Min=3180"
+        },
+        "2026-02-28 18:27:43:175 70 sec: 10375 operations; 154.4 current ops/sec; est completion in 5 minutes [READ: Count=1253": {
+          "Max=228991": "Min=2178"
+        },
+        "2026-02-28 18:27:53:173 80 sec: 11914 operations; 153.93 current ops/sec; est completion in 5 minutes [READ: Count=1244": {
+          "Max=355839": "Min=2566"
+        },
+        "2026-02-28 18:28:03:175 90 sec: 13539 operations; 162.47 current ops/sec; est completion in 5 minutes [READ: Count=1295": {
+          "Max=264703": "Min=2516"
+        },
+        "2026-02-28 18:28:13:171 100 sec: 15195 operations; 165.67 current ops/sec; est completion in 4 minutes [READ: Count=1329": {
+          "Max=228095": "Min=2376"
+        },
+        "2026-02-28 18:28:23:172 110 sec: 16956 operations; 176.1 current ops/sec; est completion in 4 minutes [READ: Count=1351": {
+          "Max=197119": "Min=2306"
+        },
+        "2026-02-28 18:28:33:170 120 sec: 18541 operations; 158.52 current ops/sec; est completion in 4 minutes [READ: Count=1284": {
+          "Max=275711": "Min=2712"
+        },
+        "2026-02-28 18:28:43:174 130 sec: 20031 operations; 148.94 current ops/sec; est completion in 4 minutes [READ: Count=1187": {
+          "Max=227199": "Min=4204"
+        },
+        "2026-02-28 18:28:53:174 140 sec: 21652 operations; 162.1 current ops/sec; est completion in 4 minutes [READ: Count=1300": {
+          "Max=345343": "Min=3084"
+        },
+        "2026-02-28 18:29:03:171 150 sec: 23213 operations; 156.15 current ops/sec; est completion in 3 minutes [READ: Count=1249": {
+          "Max=214143": "Min=2750"
+        },
+        "2026-02-28 18:29:13:171 160 sec: 24839 operations; 162.6 current ops/sec; est completion in 3 minutes [READ: Count=1309": {
+          "Max=204159": "Min=3792"
+        },
+        "2026-02-28 18:29:23:174 170 sec: 26449 operations; 160.95 current ops/sec; est completion in 3 minutes [READ: Count=1287": {
+          "Max=394239": "Min=4062"
+        },
+        "2026-02-28 18:29:33:175 180 sec: 28007 operations; 155.8 current ops/sec; est completion in 3 minutes [READ: Count=1250": {
+          "Max=326399": "Min=3306"
+        },
+        "2026-02-28 18:29:43:173 190 sec: 29627 operations; 162.02 current ops/sec; est completion in 3 minutes [READ: Count=1309": {
+          "Max=227327": "Min=2352"
+        },
+        "2026-02-28 18:29:53:171 200 sec: 31173 operations; 154.63 current ops/sec; est completion in 3 minutes [READ: Count=1245": {
+          "Max=210175": "Min=3442"
+        },
+        "2026-02-28 18:30:03:174 210 sec: 32757 operations; 158.35 current ops/sec; est completion in 2 minutes [READ: Count=1264": {
+          "Max=238079": "Min=2764"
+        },
+        "2026-02-28 18:30:13:171 220 sec: 34407 operations; 165.05 current ops/sec; est completion in 2 minutes [READ: Count=1333": {
+          "Max=239999": "Min=2330"
+        },
+        "2026-02-28 18:30:23:174 230 sec: 36064 operations; 165.65 current ops/sec; est completion in 2 minutes [READ: Count=1327": {
+          "Max=225919": "Min=3550"
+        },
+        "2026-02-28 18:30:33:173 240 sec: 37701 operations; 163.73 current ops/sec; est completion in 2 minutes [READ: Count=1289": {
+          "Max=214527": "Min=2280"
+        },
+        "2026-02-28 18:30:43:172 250 sec: 39296 operations; 159.5 current ops/sec; est completion in 2 minutes [READ: Count=1269": {
+          "Max=223103": "Min=3580"
+        },
+        "2026-02-28 18:30:53:175 260 sec: 40889 operations; 159.27 current ops/sec; est completion in 2 minutes [READ: Count=1285": {
+          "Max=305663": "Min=4140"
+        },
+        "2026-02-28 18:31:03:173 270 sec: 42393 operations; 150.42 current ops/sec; est completion in 1 minute [READ: Count=1172": {
+          "Max=438271": "Min=2658"
+        },
+        "2026-02-28 18:31:13:174 280 sec: 43954 operations; 156.08 current ops/sec; est completion in 1 minute [READ: Count=1256": {
+          "Max=245503": "Min=3226"
+        },
+        "2026-02-28 18:31:23:174 290 sec: 45614 operations; 166 current ops/sec; est completion in 1 minute [READ: Count=1305": {
+          "Max=296959": "Min=2152"
+        },
+        "2026-02-28 18:31:33:173 300 sec: 47088 operations; 147.41 current ops/sec; est completion in 1 minute [READ: Count=1191": {
+          "Max=353279": "Min=3298"
+        },
+        "2026-02-28 18:31:43:173 310 sec: 48643 operations; 155.5 current ops/sec; est completion in 1 minute [READ: Count=1225": {
+          "Max=369151": "Min=2706"
+        },
+        "2026-02-28 18:31:53:175 320 sec: 50174 operations; 153.08 current ops/sec; est completion in 1 minute [READ: Count=1219": {
+          "Max=282879": "Min=3302"
+        },
+        "2026-02-28 18:32:03:173 330 sec: 51671 operations; 149.71 current ops/sec; est completion in 54 seconds [READ: Count=1222": {
+          "Max=272639": "Min=2406"
+        },
+        "2026-02-28 18:32:13:173 340 sec: 53251 operations; 158 current ops/sec; est completion in 44 seconds [READ: Count=1237": {
+          "Max=317439": "Min=3674"
+        },
+        "2026-02-28 18:32:23:172 350 sec: 54816 operations; 156.52 current ops/sec; est completion in 34 seconds [READ: Count=1258": {
+          "Max=285951": "Min=3190"
+        },
+        "2026-02-28 18:32:33:174 360 sec: 56341 operations; 152.47 current ops/sec; est completion in 24 seconds [READ: Count=1207": {
+          "Max=302335": "Min=3550"
+        },
+        "2026-02-28 18:32:43:170 369 sec: 57879 operations; 153.88 current ops/sec; est completion in 14 seconds [READ: Count=1260": {
+          "Max=308479": "Min=2808"
+        },
+        "2026-02-28 18:32:53:171 380 sec: 59410 operations; 153.08 current ops/sec; est completion in 4 second [READ: Count=1213": {
+          "Max=446975": "Min=2346"
+        },
+        "2026-02-28 18:32:57:122 383 sec: 60000 operations; 149.29 current ops/sec; [READ: Count=478": {
+          "Max=221439": "Min=2892"
+        },
+        "OVERALL": {
+          "RunTime(ms)": 383952.0,
+          "Throughput(ops/sec)": 156.26953369171147
+        },
+        "TOTAL_GCS_G1_Young_Generation": {
+          "Count": 19.0
+        },
+        "TOTAL_GC_TIME_G1_Young_Generation": {
+          "Time(ms)": 93.0
+        },
+        "TOTAL_GC_TIME_%_G1_Young_Generation": {
+          "Time(%)": 0.024221777722215277
+        },
+        "TOTAL_GCS_G1_Concurrent_GC": {
+          "Count": 0.0
+        },
+        "TOTAL_GC_TIME_G1_Concurrent_GC": {
+          "Time(ms)": 0.0
+        },
+        "TOTAL_GC_TIME_%_G1_Concurrent_GC": {
+          "Time(%)": 0.0
+        },
+        "TOTAL_GCS_G1_Old_Generation": {
+          "Count": 0.0
+        },
+        "TOTAL_GC_TIME_G1_Old_Generation": {
+          "Time(ms)": 0.0
+        },
+        "TOTAL_GC_TIME_%_G1_Old_Generation": {
+          "Time(%)": 0.0
+        },
+        "TOTAL_GCs": {
+          "Count": 19.0
+        },
+        "TOTAL_GC_TIME": {
+          "Time(ms)": 93.0
+        },
+        "TOTAL_GC_TIME_%": {
+          "Time(%)": 0.024221777722215277
+        },
+        "READ": {
+          "Operations": 47996.0,
+          "AverageLatency(us)": 25390.199016584716,
+          "MinLatency(us)": 2152.0,
+          "MaxLatency(us)": 457215.0,
+          "50thPercentileLatency(us)": 9559.0,
+          "90thPercentileLatency(us)": 61471.0,
+          "95thPercentileLatency(us)": 72127.0,
+          "99thPercentileLatency(us)": 131583.0,
+          "99.9PercentileLatency(us)": 285951.0,
+          "Return=OK": 47996.0
+        },
+        "CLEANUP": {
+          "Operations": 4.0,
+          "AverageLatency(us)": 1.5,
+          "MinLatency(us)": 1.0,
+          "MaxLatency(us)": 3.0,
+          "50thPercentileLatency(us)": 1.0,
+          "90thPercentileLatency(us)": 3.0,
+          "95thPercentileLatency(us)": 3.0,
+          "99thPercentileLatency(us)": 3.0,
+          "99.9PercentileLatency(us)": 3.0
+        },
+        "UPDATE": {
+          "Operations": 8951.0,
+          "AverageLatency(us)": 25743.751983018657,
+          "MinLatency(us)": 2394.0,
+          "MaxLatency(us)": 455423.0,
+          "50thPercentileLatency(us)": 9839.0,
+          "90thPercentileLatency(us)": 61247.0,
+          "95thPercentileLatency(us)": 71487.0,
+          "99thPercentileLatency(us)": 131711.0,
+          "99.9PercentileLatency(us)": 317695.0,
+          "Return=OK": 8951.0
+        },
+        "INSERT": {
+          "Operations": 3053.0,
+          "AverageLatency(us)": 26033.466754012446,
+          "MinLatency(us)": 2692.0,
+          "MaxLatency(us)": 327423.0,
+          "50thPercentileLatency(us)": 9727.0,
+          "90thPercentileLatency(us)": 62015.0,
+          "95thPercentileLatency(us)": 72895.0,
+          "99thPercentileLatency(us)": 135807.0,
+          "99.9PercentileLatency(us)": 243711.0,
+          "Return=OK": 3053.0
+        }
+      },
+      "config": {
+        "workload": "site.ycsb.workloads.CoreWorkload",
+        "recordcount": "1500",
+        "operationcount": "6000",
+        "readallfields": "true",
+        "readproportion": "0.8",
+        "updateproportion": "0.15",
+        "insertproportion": "0.05",
+        "scanproportion": "0",
+        "requestdistribution": "uniform",
+        "db": "site.ycsb.db.DynamoDBClient",
+        "dynamodb.endpoint": "http://localhost:8787",
+        "threadcount": "4",
+        "measurementtype": "hdrhistogram",
+        "hdrhistogram.percentiles": "50,90,95,99,99.9"
+      },
+      "raw_file": "run_variant_c_20260228_181637.txt"
+    },
+    {
+      "variant": "Hot Partition Stress",
+      "metrics": {
+        "2026-02-28 18:17:02:033 10 sec: 2995 operations; 299.35 current ops/sec; est completion in 1 minute [READ: Count=1179": {
+          "Max=162559": "Min=4344"
+        },
+        "2026-02-28 18:17:12:027 20 sec: 5508 operations; 251.43 current ops/sec; est completion in 1 minute [READ: Count=1054": {
+          "Max=158719": "Min=3308"
+        },
+        "2026-02-28 18:17:22:030 30 sec: 8064 operations; 255.52 current ops/sec; est completion in 1 minute [READ: Count=1082": {
+          "Max=197759": "Min=2852"
+        },
+        "2026-02-28 18:17:32:031 40 sec: 10497 operations; 243.3 current ops/sec; est completion in 1 minute [READ: Count=1004": {
+          "Max=213631": "Min=3584"
+        },
+        "2026-02-28 18:17:42:028 50 sec: 13115 operations; 261.85 current ops/sec; est completion in 1 minute [READ: Count=1094": {
+          "Max=154879": "Min=3890"
+        },
+        "2026-02-28 18:17:52:032 60 sec: 15652 operations; 253.6 current ops/sec; est completion in 56 seconds [READ: Count=1012": {
+          "Max=174719": "Min=3416"
+        },
+        "2026-02-28 18:18:02:032 70 sec: 18313 operations; 266.13 current ops/sec; est completion in 45 seconds [READ: Count=1094": {
+          "Max=192895": "Min=3636"
+        },
+        "2026-02-28 18:18:12:031 80 sec: 21037 operations; 272.4 current ops/sec; est completion in 35 seconds [READ: Count=1050": {
+          "Max=159743": "Min=3492"
+        },
+        "2026-02-28 18:18:22:032 90 sec: 23584 operations; 254.67 current ops/sec; est completion in 25 seconds [READ: Count=1053": {
+          "Max=219263": "Min=5344"
+        },
+        "2026-02-28 18:18:32:029 100 sec: 26414 operations; 283.11 current ops/sec; est completion in 14 seconds [READ: Count=1153": {
+          "Max=206975": "Min=3510"
+        },
+        "2026-02-28 18:18:42:032 110 sec: 29119 operations; 270.42 current ops/sec; est completion in 4 second [READ: Count=1046": {
+          "Max=188799": "Min=2840"
+        },
+        "2026-02-28 18:18:45:232 113 sec: 30000 operations; 275.23 current ops/sec; [READ: Count=345": {
+          "Max=123903": "Min=1907"
+        },
+        "OVERALL": {
+          "RunTime(ms)": 113205.0,
+          "Throughput(ops/sec)": 265.0059626341593
+        },
+        "TOTAL_GCS_G1_Young_Generation": {
+          "Count": 11.0
+        },
+        "TOTAL_GC_TIME_G1_Young_Generation": {
+          "Time(ms)": 32.0
+        },
+        "TOTAL_GC_TIME_%_G1_Young_Generation": {
+          "Time(%)": 0.02826730268097699
+        },
+        "TOTAL_GCS_G1_Concurrent_GC": {
+          "Count": 0.0
+        },
+        "TOTAL_GC_TIME_G1_Concurrent_GC": {
+          "Time(ms)": 0.0
+        },
+        "TOTAL_GC_TIME_%_G1_Concurrent_GC": {
+          "Time(%)": 0.0
+        },
+        "TOTAL_GCS_G1_Old_Generation": {
+          "Count": 0.0
+        },
+        "TOTAL_GC_TIME_G1_Old_Generation": {
+          "Time(ms)": 0.0
+        },
+        "TOTAL_GC_TIME_%_G1_Old_Generation": {
+          "Time(%)": 0.0
+        },
+        "TOTAL_GCs": {
+          "Count": 11.0
+        },
+        "TOTAL_GC_TIME": {
+          "Time(ms)": 32.0
+        },
+        "TOTAL_GC_TIME_%": {
+          "Time(%)": 0.02826730268097699
+        },
+        "READ": {
+          "Operations": 12166.0,
+          "AverageLatency(us)": 29805.07299030084,
+          "MinLatency(us)": 1907.0,
+          "MaxLatency(us)": 219263.0,
+          "50thPercentileLatency(us)": 16911.0,
+          "90thPercentileLatency(us)": 64703.0,
+          "95thPercentileLatency(us)": 80319.0,
+          "99thPercentileLatency(us)": 122879.0,
+          "99.9PercentileLatency(us)": 192511.0,
+          "Return=OK": 12166.0
+        },
+        "CLEANUP": {
+          "Operations": 8.0,
+          "AverageLatency(us)": 0.875,
+          "MinLatency(us)": 0.0,
+          "MaxLatency(us)": 3.0,
+          "50thPercentileLatency(us)": 1.0,
+          "90thPercentileLatency(us)": 3.0,
+          "95thPercentileLatency(us)": 3.0,
+          "99thPercentileLatency(us)": 3.0,
+          "99.9PercentileLatency(us)": 3.0
+        },
+        "INSERT": {
+          "Operations": 5871.0,
+          "AverageLatency(us)": 30226.120933401464,
+          "MinLatency(us)": 2550.0,
+          "MaxLatency(us)": 217215.0,
+          "50thPercentileLatency(us)": 17263.0,
+          "90thPercentileLatency(us)": 64351.0,
+          "95thPercentileLatency(us)": 80447.0,
+          "99thPercentileLatency(us)": 134783.0,
+          "99.9PercentileLatency(us)": 207615.0,
+          "Return=OK": 5871.0
+        },
+        "UPDATE": {
+          "Operations": 11963.0,
+          "AverageLatency(us)": 30123.59684025746,
+          "MinLatency(us)": 2018.0,
+          "MaxLatency(us)": 219391.0,
+          "50thPercentileLatency(us)": 17423.0,
+          "90thPercentileLatency(us)": 64319.0,
+          "95thPercentileLatency(us)": 80767.0,
+          "99thPercentileLatency(us)": 123135.0,
+          "99.9PercentileLatency(us)": 184063.0,
+          "Return=OK": 11963.0
+        }
+      },
+      "config": {
+        "workload": "site.ycsb.workloads.CoreWorkload",
+        "recordcount": "500",
+        "operationcount": "3000",
+        "readallfields": "true",
+        "readproportion": "0.4",
+        "updateproportion": "0.4",
+        "insertproportion": "0.2",
+        "scanproportion": "0",
+        "requestdistribution": "zipfian",
+        "zipfianconstant": "0.99",
+        "db": "site.ycsb.db.DynamoDBClient",
+        "dynamodb.endpoint": "http://localhost:8787",
+        "threadcount": "8",
+        "measurementtype": "hdrhistogram",
+        "hdrhistogram.percentiles": "50,90,95,99,99.9"
+      },
+      "raw_file": "run_variant_a_20260228_181637.txt"
+    }
+  ]
+}
