@@ -5,7 +5,7 @@ import { TableRegistryDO } from "./table-registry-do";
 import { TraceDO } from "./trace-do";
 import { validateItemAgainstSchema, ValidationError } from "./validation";
 import { MetadataService } from "./metadata-service";
-import { CreateTableInput, RoutingTable, ReplicationMessage, Role } from "./types";
+import { CreateTableInput, RoutingTable, ReplicationMessage, Role, TableMetadata } from "./types";
 import { createLogger } from "./debug";
 import type { TraceEvent } from "./trace-types";
 
@@ -24,6 +24,11 @@ export interface Env {
 const NUM_PARTITIONS = 100;
 const TRACE_DO_SINGLETON_NAME = "shvm-db-trace";
 const ROUTING_CACHE_MAX_SIZE = 1000;
+const METADATA_CACHE_TTL_MS = 60_000;
+const METADATA_CACHE_MAX_SIZE = 500;
+
+const metadataCache = new Map<string, { metadata: TableMetadata; expiresAt: number }>();
+const keySchemaCache = new Map<string, { pk: string; sk?: string }>();
 
 function hashPartitionKey(pk: string, numPartitions: number): number {
 	let hash = 5381;
@@ -49,6 +54,54 @@ async function getOrSetRoutingCache(pKey: string, fetch: () => Promise<RoutingTa
 	}
 	validRoutingCache.set(pKey, routing);
 	return { routing, fromCache: false };
+}
+
+type MetadataSource = "worker" | "kv" | "registry";
+
+async function getTableMetadataCached(
+	tableName: string,
+	metadataService: MetadataService
+): Promise<{ metadata: TableMetadata; source: MetadataSource }> {
+	const now = Date.now();
+	const entry = metadataCache.get(tableName);
+	if (entry && entry.expiresAt > now) {
+		return { metadata: entry.metadata, source: "worker" };
+	}
+	const result = await metadataService.getTableMetadata(tableName);
+	const source: MetadataSource = result.fromCache ? "kv" : "registry";
+	if (metadataCache.size >= METADATA_CACHE_MAX_SIZE) {
+		let oldestKey: string | undefined;
+		let oldest = Infinity;
+		for (const [k, v] of metadataCache) {
+			if (v.expiresAt < oldest) {
+				oldest = v.expiresAt;
+				oldestKey = k;
+			}
+		}
+		if (oldestKey !== undefined) metadataCache.delete(oldestKey);
+	}
+	metadataCache.set(tableName, { metadata: result.metadata, expiresAt: now + METADATA_CACHE_TTL_MS });
+	const pkDef = result.metadata.KeySchema.find(k => k.KeyType === "HASH");
+	const skDef = result.metadata.KeySchema.find(k => k.KeyType === "RANGE");
+	if (pkDef) {
+		keySchemaCache.set(tableName, { pk: pkDef.AttributeName, sk: skDef?.AttributeName });
+	}
+	return { metadata: result.metadata, source };
+}
+
+function getRaw(v: any): string | undefined {
+	const s = v?.S ?? v?.N ?? v?.B;
+	return s != null ? String(s) : undefined;
+}
+
+function buildTraceSummary(traceEvents: TraceEvent[], totalMs: number): string {
+	const seg: Record<string, number> = { total_ms: totalMs };
+	for (const e of traceEvents) {
+		if (e.step === "request") continue;
+		const key = e.step.replace(/-/g, "_") + "_ms";
+		seg[key] = (seg[key] ?? 0) + e.durationMs;
+	}
+	return Object.entries(seg).map(([k, v]) => `${k}=${v}`).join(",");
 }
 
 export default {
@@ -172,6 +225,8 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	if (op === "DeleteTable") {
 		log("control", `DeleteTable: ${body.TableName}`);
 		const res = await metadataService.deleteTable(body.TableName);
+		metadataCache.delete(body.TableName);
+		keySchemaCache.delete(body.TableName);
 		return new Response(JSON.stringify(res), { headers: baseHeaders });
 	}
 		if (op === "ListTables") {
@@ -180,7 +235,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 		return new Response(JSON.stringify({ TableNames: tables }), { headers: baseHeaders });
 	}
 	if (op === "DescribeTable") {
-		const { metadata } = await metadataService.getTableMetadata(body.TableName);
+		const { metadata } = await getTableMetadataCached(body.TableName, metadataService);
 		return new Response(JSON.stringify({ Table: metadata }), { headers: baseHeaders });
 	}
 
@@ -196,24 +251,71 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	const tableName = body.TableName;
 	if (!tableName) throw new ValidationError("TableName is required");
 
-	const getMetaStart = Date.now() - requestStartTs;
-	const metaResult = await metadataService.getTableMetadata(tableName);
-	const getMetaEnd = Date.now() - requestStartTs;
-	addEvent("get_table_metadata", getMetaStart, getMetaEnd - getMetaStart, { metadata_cache: metaResult.fromCache ? "hit" : "miss" });
-	const metadata = metaResult.metadata;
+	const keySchema = keySchemaCache.get(tableName);
+	let metadata: TableMetadata;
+	let metaSource: MetadataSource;
+	let routing: RoutingTable;
+	let routingCacheHit: boolean;
+	let partitionId: number;
+	let pKey: string;
+
+	if (keySchema) {
+		const pkRaw = getRaw(body.Key?.[keySchema.pk] ?? body.Item?.[keySchema.pk]);
+		if (!pkRaw) throw new ValidationError("Partition Key value invalid");
+		partitionId = hashPartitionKey(pkRaw, NUM_PARTITIONS);
+		pKey = `${tableName}::partition-${partitionId}`;
+		addEvent("hash_partition_key", 0, 0, { from_cache: true });
+		if (op === "GetItem") {
+			const parallelStart = Date.now() - requestStartTs;
+			const [metaResult, routingResult] = await Promise.all([
+				getTableMetadataCached(tableName, metadataService),
+				getOrSetRoutingCache(pKey, () => env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey)).getRoutingConfig(requestId))
+			]);
+			metadata = metaResult.metadata;
+			metaSource = metaResult.source;
+			routing = routingResult.routing;
+			routingCacheHit = routingResult.fromCache;
+			const parallelMs = Date.now() - requestStartTs - parallelStart;
+			addEvent("get_table_metadata", parallelStart, parallelMs, { metadata_source: metaSource, parallel: true });
+			addEvent("get_routing_config", parallelStart, parallelMs, { routing_cache: routingCacheHit ? "hit" : "miss", parallel: true });
+		} else {
+			const metaStart = Date.now() - requestStartTs;
+			const metaResult = await getTableMetadataCached(tableName, metadataService);
+			metadata = metaResult.metadata;
+			metaSource = metaResult.source;
+			addEvent("get_table_metadata", metaStart, Date.now() - requestStartTs - metaStart, { metadata_source: metaSource });
+			routing = { version: 0, partitions: NUM_PARTITIONS, replicas: {} };
+			routingCacheHit = true;
+		}
+	} else {
+		const metaStart = Date.now() - requestStartTs;
+		const metaResult = await getTableMetadataCached(tableName, metadataService);
+		metadata = metaResult.metadata;
+		metaSource = metaResult.source;
+		addEvent("get_table_metadata", metaStart, Date.now() - requestStartTs - metaStart, { metadata_source: metaSource });
+		const pkDef = metadata.KeySchema.find(k => k.KeyType === "HASH");
+		if (!pkDef) throw new Error("Table definition missing Partition Key");
+		const pkRaw = getRaw(body.Key?.[pkDef.AttributeName] ?? body.Item?.[pkDef.AttributeName]);
+		if (!pkRaw) throw new ValidationError("Partition Key value invalid");
+		partitionId = hashPartitionKey(pkRaw, NUM_PARTITIONS);
+		pKey = `${tableName}::partition-${partitionId}`;
+		addEvent("hash_partition_key", Date.now() - requestStartTs, 0);
+		if (op === "GetItem") {
+			const routingStart = Date.now() - requestStartTs;
+			const routingResult = await getOrSetRoutingCache(pKey, () => env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey)).getRoutingConfig(requestId));
+			routing = routingResult.routing;
+			routingCacheHit = routingResult.fromCache;
+			addEvent("get_routing_config", routingStart, Date.now() - requestStartTs - routingStart, { routing_cache: routingCacheHit ? "hit" : "miss" });
+		} else {
+			routing = { version: 0, partitions: NUM_PARTITIONS, replicas: {} };
+			routingCacheHit = true;
+		}
+	}
 
 	const pkDef = metadata.KeySchema.find(k => k.KeyType === "HASH");
-	if (!pkDef) throw new Error("Table definition missing Partition Key");
-
-	const pkVal = (op === "PutItem" ? body.Item : body.Key)?.[pkDef.AttributeName];
-	const getRaw = (v: any) => v?.S || v?.N || v?.B;
+	const pkVal = (op === "PutItem" ? body.Item : body.Key)?.[pkDef!.AttributeName];
 	const pkRaw = getRaw(pkVal);
 	if (!pkRaw) throw new ValidationError("Partition Key value invalid");
-
-	const hashStart = Date.now() - requestStartTs;
-	const partitionId = hashPartitionKey(pkRaw, NUM_PARTITIONS);
-	addEvent("hash_partition_key", hashStart, Date.now() - requestStartTs - hashStart);
-	const pKey = `${tableName}::partition-${partitionId}`;
 
 	baseHeaders["X-SHIVAM-DB-PARTITION-ID-INTERNAL"] = String(partitionId);
 	baseHeaders["X-SHIVAM-DB-PARTITION-KEY"] = pKey;
@@ -255,18 +357,16 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 		ctx.waitUntil(
 			getOrSetRoutingCache(pKey, () => env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey)).getRoutingConfig()).then(() => {})
 		);
-		addEvent("request", 0, Date.now() - requestStartTs);
+		const totalMsWrite = Date.now() - requestStartTs;
+		addEvent("request", 0, totalMsWrite, { cold_path: metaSource !== "worker" });
 		flushTrace();
+		baseHeaders["X-SHIVAM-DB-Trace-Summary"] = buildTraceSummary(traceEvents, totalMsWrite);
 		return new Response(JSON.stringify({}), { headers: baseHeaders });
 	}
 
 	if (op === "GetItem") {
-		const routingStart = Date.now() - requestStartTs;
-		const pStub = env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey));
-		const { routing, fromCache: routingCacheHit } = await getOrSetRoutingCache(pKey, () => pStub.getRoutingConfig(requestId));
-		addEvent("get_routing_config", routingStart, Date.now() - requestStartTs - routingStart, { routing_cache: routingCacheHit ? "hit" : "miss" });
-
 		const replicas = routing.replicas[partitionId] || [];
+		const routingTarget = replicas.length === 0 ? "leader" : "replica";
 		let readTarget: string;
 		let rStub: DurableObjectStub<SubDO>;
 		if (replicas.length === 0) {
@@ -293,9 +393,13 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 		const item = replicas.length === 0
 			? await rStub.ensureLeaderAndGetItem(doKey, requestId)
 			: await rStub.getItem(doKey, requestId);
-		addEvent("do_get_item", doStart, Date.now() - requestStartTs - doStart);
-		addEvent("request", 0, Date.now() - requestStartTs);
+		const doEnd = Date.now() - requestStartTs;
+		addEvent("do_get_item", doStart, doEnd - doStart, { routing_target: routingTarget });
+		const totalMs = Date.now() - requestStartTs;
+		const coldPath = metaSource !== "worker" || !routingCacheHit;
+		addEvent("request", 0, totalMs, { cold_path: coldPath });
 		flushTrace();
+		baseHeaders["X-SHIVAM-DB-Trace-Summary"] = buildTraceSummary(traceEvents, totalMs);
 
 		ctx.waitUntil((async () => {
 			try {
@@ -309,8 +413,10 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 		return new Response(JSON.stringify(item !== undefined && item !== null ? { Item: item } : {}), { headers: baseHeaders });
 	}
 
-	addEvent("request", 0, Date.now() - requestStartTs);
+	const totalMsFallback = Date.now() - requestStartTs;
+	addEvent("request", 0, totalMsFallback, { cold_path: true });
 	flushTrace();
+	baseHeaders["X-SHIVAM-DB-Trace-Summary"] = buildTraceSummary(traceEvents, totalMsFallback);
 	return new Response(JSON.stringify({ __type: "NotImplemented", message: `Operation ${op} not implemented` }), {
 		status: 501,
 		headers: baseHeaders

@@ -358,31 +358,31 @@ export class SubDO extends DurableObject<Env> {
         const fromPending = this.getLatestPending(sk);
         if (fromPending !== undefined) {
             this.log("SubDO", `getItem PENDING sk=${sk}`);
-            this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { source: "pending" });
+            this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { subdo_source: "pending" });
             return fromPending;
         }
         const cached = this.lru.get(sk);
         if (cached !== undefined) {
             this.log("SubDO", `getItem CACHE HIT sk=${sk}`);
-            this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { lru: "hit" });
+            this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { subdo_source: "lru_hit" });
             return cached;
         }
         if (!this.bf.has(sk)) {
             this.log("SubDO", `getItem BLOOM NEGATIVE sk=${sk}`);
-            this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { bloom: "negative" });
+            this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { subdo_source: "bloom_negative" });
             return null;
         }
         const cursor = this.sql.exec(SubDOQueries.Items.GET_LATEST, sk);
         const row = Array.from(cursor)[0] as any;
         if (!row || (row.deleted as number) === 1) {
             this.log("SubDO", `getItem NOT FOUND sk=${sk}`);
-            this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { lru: "miss" });
+            this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { subdo_source: "sql_miss" });
             return null;
         }
         const val = JSON.parse(row.value as string);
         this.lru.put(sk, val);
         this.log("SubDO", `getItem FOUND sk=${sk}`);
-        this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { lru: "miss" });
+        this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { subdo_source: "sql" });
         return val;
     }
 
