@@ -33,6 +33,12 @@
 				"SubDO",
 				"TableRegistryDO"
 			]
+		},
+		{
+			"tag": "v4",
+			"new_sqlite_classes": [
+				"TraceDO"
+			]
 		}
 	],
 	"assets": {
@@ -52,6 +58,10 @@
 			{
 				"name": "TABLE_REGISTRY_DO",
 				"class_name": "TableRegistryDO"
+			},
+			{
+				"name": "TRACE_DO",
+				"class_name": "TraceDO"
 			}
 		]
 	},
@@ -74,12 +84,6 @@
 		{
 			"binding": "TABLE_METADATA_CACHE",
 			"id": "28f7d803ebaf49fb989333457e9cc451"
-		}
-	],
-	"analytics_engine_datasets": [
-		{
-			"binding": "OBSERVABILITY",
-			"dataset": "request_stages"
 		}
 	],
 	"vars": {

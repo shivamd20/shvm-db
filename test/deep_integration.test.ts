@@ -62,19 +62,11 @@ describe("1. Table Lifecycle", () => {
         const tableName = TestClient.uniqueTableName("List");
         await client.createTable(tableName, { hashKey: "PK" });
 
-        // Use a large limit so the new table is likely in the first page (when many tables exist)
-        const listRes = await client.listTables(10000);
+        const listRes = await client.listTables(100);
         expect(listRes.status).toBe(200);
         const body = await listRes.json() as any;
-        expect(Array.isArray(body.TableNames)).toBe(true);
-        // Table should appear in list, or at least exist (DescribeTable) if list is paginated
-        if (body.TableNames.includes(tableName)) {
-            console.log(`[TEST] ListTables contains: ${tableName}`);
-        } else {
-            const descRes = await client.describeTable(tableName);
-            expect(descRes.status).toBe(200);
-            console.log(`[TEST] ListTables returned ${body.TableNames.length} tables; table ${tableName} verified via DescribeTable`);
-        }
+        expect(body.TableNames).toContain(tableName);
+        console.log(`[TEST] ListTables contains: ${JSON.stringify(body.TableNames)}`);
     });
 
     it("should delete a table and verify it is gone", async () => {

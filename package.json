@@ -24,7 +24,5 @@
 		"vitest": "^3.0.0",
 		"wrangler": "^4.51.0"
 	},
-	"dependencies": {
-		"@sentry/cloudflare": "^10.38.0"
-	}
+	"dependencies": {}
 }

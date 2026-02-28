@@ -896,10 +896,22 @@ textarea.form-control {
 
 .network-meta {
     display: flex;
+    align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
     font-size: 0.8rem;
     color: #666;
     margin-bottom: 4px;
+}
+
+.network-trace-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.network-trace-link:hover {
+    text-decoration: underline;
 }
 
 .network-method {

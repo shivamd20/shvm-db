@@ -308,6 +308,7 @@
 
                 const duration = Date.now() - startTime;
                 const data = await response.json();
+                const requestId = response.headers.get('X-Request-Id');
 
                 // Log network activity
                 logNetwork({
@@ -317,14 +318,15 @@
                     status: response.status,
                     duration,
                     request: payload,
-                    response: data
+                    response: data,
+                    requestId: requestId || undefined
                 });
 
                 // Display response
                 displayResponse(data, response.status, duration);
 
                 // Add to history
-                if (status >= 200 && status < 300) {
+                if (response.status >= 200 && response.status < 300) {
                     if (operation === 'CreateTable' || operation === 'DeleteTable') {
                         fetchTables();
                     }
@@ -462,6 +464,7 @@
                             ${entry.status || 'ERR'}
                         </span>
                         <span style="color: #666;">${entry.duration}ms</span>
+                        ${entry.requestId ? `<a href="/trace.html?requestId=${encodeURIComponent(entry.requestId)}" target="_blank" rel="noopener" class="network-trace-link" onclick="event.stopPropagation()">View trace</a>` : ''}
                     </div>
                     <div class="network-url">${entry.operation} → ${entry.url}</div>
                     <div class="network-details" id="network-details-${idx}">

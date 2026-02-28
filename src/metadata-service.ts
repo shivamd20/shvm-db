@@ -8,47 +8,42 @@ export class MetadataService {
     private registry: DurableObjectStub<TableRegistryDO>;
     private log;
 
-    constructor(env: Env) {
+    constructor(env: Env, registryStub?: DurableObjectStub<TableRegistryDO>) {
         this.env = env;
         this.log = createLogger(env);
-        const id = env.TABLE_REGISTRY_DO.idFromName("global-registry");
-        this.registry = env.TABLE_REGISTRY_DO.get(id);
+        this.registry = registryStub ?? env.TABLE_REGISTRY_DO.get(env.TABLE_REGISTRY_DO.idFromName("global-registry"));
     }
 
     private getCacheKey(tableName: string): string {
         return `table_meta:${tableName}`;
     }
 
-    async getTableMetadata(tableName: string): Promise<{ metadata: TableMetadata; metadataCacheHit: boolean }> {
+    async getTableMetadata(tableName: string): Promise<{ metadata: TableMetadata; fromCache: boolean }> {
         const cacheKey = this.getCacheKey(tableName);
 
-        // 1. Try KV Cache
         try {
             const cached = await this.env.TABLE_METADATA_CACHE.get<TableMetadata>(cacheKey, "json");
             if (cached) {
-                return { metadata: cached, metadataCacheHit: true };
+                return { metadata: cached, fromCache: true };
             }
         } catch (e) {
             this.log.warn("MetadataService", "KV cache lookup failed", e);
         }
 
-        // 2. Fallback to Registry DO
         const metadata = await this.registry.getTable(tableName);
-
         if (!metadata) {
             throw new Error(`Table not found: ${tableName}`);
         }
 
-        // 3. Update KV Cache (24h TTL)
         try {
             await this.env.TABLE_METADATA_CACHE.put(cacheKey, JSON.stringify(metadata), {
-                expirationTtl: 86400 // 24 hours
+                expirationTtl: 86400
             });
         } catch (e) {
             this.log.warn("MetadataService", "KV cache update failed", e);
         }
 
-        return { metadata, metadataCacheHit: false };
+        return { metadata, fromCache: false };
     }
 
     async createTable(input: any): Promise<any> {

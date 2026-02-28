@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>shvm-db – Request Trace</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&family=Fira+Code&display=swap" rel="stylesheet">
+    <style>
+        .trace-toolbar {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        .trace-toolbar input {
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.05);
+            color: var(--text-color);
+            font-family: 'Fira Code', monospace;
+            min-width: 280px;
+        }
+        .trace-toolbar button {
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--primary-color);
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary-color);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .trace-toolbar button:hover {
+            background: rgba(59, 130, 246, 0.25);
+        }
+        .trace-toolbar button.secondary {
+            border-color: #555;
+            background: rgba(255,255,255,0.05);
+            color: #aaa;
+        }
+        .waterfall-wrap {
+            overflow-x: auto;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .waterfall-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .waterfall-table th {
+            text-align: left;
+            padding: 0.5rem 1rem;
+            color: #888;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .waterfall-table td {
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            vertical-align: middle;
+        }
+        .waterfall-table tr:hover td {
+            background: rgba(255,255,255,0.03);
+        }
+        .waterfall-name {
+            font-family: 'Fira Code', monospace;
+            white-space: nowrap;
+        }
+        .waterfall-bar-cell {
+            min-width: 400px;
+            position: relative;
+            height: 28px;
+        }
+        .waterfall-scale {
+            position: absolute;
+            top: -18px;
+            left: 0;
+            right: 0;
+            height: 14px;
+            font-size: 10px;
+            color: #666;
+        }
+        .waterfall-track {
+            position: relative;
+            height: 22px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 4px;
+        }
+        .waterfall-bar {
+            position: absolute;
+            top: 2px;
+            height: 18px;
+            border-radius: 3px;
+            background: var(--primary-color);
+            min-width: 2px;
+        }
+        .waterfall-bar.duration {
+            background: #8b5cf6;
+        }
+        .waterfall-duration-label {
+            position: absolute;
+            right: 4px;
+            top: 2px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.9);
+            font-family: 'Fira Code', monospace;
+        }
+        .trace-status {
+            text-align: center;
+            color: #888;
+            padding: 2rem;
+        }
+        .trace-attr {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 2px;
+        }
+        .export-buttons { display: flex; gap: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="logo">shvm-db</a>
+            <div class="links">
+                <a href="/index.html#vision">Philosophy</a>
+                <a href="/index.html#scaling">Architecture</a>
+                <a href="/benchmark-logs.html">Benchmarks</a>
+                <a href="/trace.html" class="active">Trace</a>
+                <a href="/playground.html">Playground</a>
+                <a href="/docs.html">Docs</a>
+                <a href="https://github.com/shivamd20/shvm-db" target="_blank" class="github-link">GitHub</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero" style="min-height: auto; padding: 4rem 0 2rem;">
+                <h1>Request <span class="gradient-text">Trace</span></h1>
+                <p class="subtitle">Inspect request timing and cache hit/miss by request ID. Use the response header <code>X-Request-Id</code> to load a trace.</p>
+            </section>
+
+            <div class="trace-toolbar">
+                <input type="text" id="requestIdInput" placeholder="Request ID (e.g. from X-Request-Id header)" />
+                <button type="button" id="loadBtn">Load trace</button>
+                <div class="export-buttons">
+                    <button type="button" id="copyJsonBtn" class="secondary">Copy as JSON</button>
+                    <button type="button" id="downloadBtn" class="secondary">Download JSON</button>
+                </div>
+            </div>
+
+            <div id="traceContent">
+                <div class="trace-status" id="traceStatus">Enter a request ID and click Load trace, or open this page with <code>?requestId=...</code></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        (function () {
+            const requestIdInput = document.getElementById('requestIdInput');
+            const loadBtn = document.getElementById('loadBtn');
+            const copyJsonBtn = document.getElementById('copyJsonBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const traceContent = document.getElementById('traceContent');
+            const traceStatus = document.getElementById('traceStatus');
+
+            function getApiBase() {
+                const u = new URL(document.URL);
+                return u.origin;
+            }
+
+            function parseQuery() {
+                const params = new URLSearchParams(window.location.search);
+                return params.get('requestId') || '';
+            }
+
+            function setInputFromUrl() {
+                const id = parseQuery();
+                if (id) requestIdInput.value = id;
+            }
+            setInputFromUrl();
+            window.addEventListener('popstate', setInputFromUrl);
+
+            let lastData = null;
+
+            function renderWaterfall(events) {
+                if (!events || events.length === 0) {
+                    traceContent.innerHTML = '<div class="trace-status" id="traceStatus">No events for this request.</div>';
+                    return;
+                }
+                const maxEnd = Math.max(...events.map(e => e.startMs + e.durationMs), 1);
+                const scaleW = 400;
+                const scale = scaleW / maxEnd;
+
+                let html = '<div class="waterfall-wrap"><table class="waterfall-table"><thead><tr><th>Step</th><th>Timeline (ms)</th><th>Duration (ms)</th></tr></thead><tbody>';
+                for (const e of events) {
+                    const left = (e.startMs / maxEnd) * 100;
+                    const width = Math.max((e.durationMs / maxEnd) * 100, 0.5);
+                    const attrStr = e.attributes && Object.keys(e.attributes).length
+                        ? '<div class="trace-attr">' + Object.entries(e.attributes).map(([k, v]) => k + ': ' + v).join(', ') + '</div>'
+                        : '';
+                    html += '<tr><td class="waterfall-name">' + escapeHtml(e.step) + attrStr + '</td>';
+                    html += '<td class="waterfall-bar-cell"><div class="waterfall-track">';
+                    html += '<div class="waterfall-bar" style="left:' + left + '%;width:' + width + '%"></div>';
+                    html += '<span class="waterfall-duration-label">' + (e.durationMs | 0) + 'ms</span>';
+                    html += '</div></td><td>' + (e.durationMs | 0) + '</td></tr>';
+                }
+                html += '</tbody></table></div>';
+                traceContent.innerHTML = html;
+            }
+
+            function escapeHtml(s) {
+                const div = document.createElement('div');
+                div.textContent = s;
+                return div.innerHTML;
+            }
+
+            async function loadTrace() {
+                const requestId = requestIdInput.value.trim();
+                if (!requestId) {
+                    traceStatus.textContent = 'Please enter a request ID.';
+                    traceContent.innerHTML = '';
+                    traceContent.appendChild(traceStatus);
+                    return;
+                }
+                traceContent.innerHTML = '<div class="trace-status" id="traceStatus">Loading...</div>';
+                try {
+                    const base = getApiBase();
+                    const res = await fetch(base + '/api/trace?requestId=' + encodeURIComponent(requestId));
+                    const data = await res.json();
+                    lastData = data;
+                    if (!res.ok) {
+                        traceContent.innerHTML = '<div class="trace-status" id="traceStatus">Error: ' + escapeHtml(data.error || res.status) + '</div>';
+                        return;
+                    }
+                    if (data.events && data.events.length > 0) {
+                        const newUrl = window.location.pathname + '?requestId=' + encodeURIComponent(requestId);
+                        if (window.location.href !== newUrl) window.history.replaceState({}, '', newUrl);
+                    }
+                    renderWaterfall(data.events || []);
+                } catch (err) {
+                    traceContent.innerHTML = '<div class="trace-status" id="traceStatus">Failed to load: ' + escapeHtml(err.message) + '</div>';
+                }
+            }
+
+            loadBtn.addEventListener('click', loadTrace);
+            requestIdInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') loadTrace();
+            });
+
+            copyJsonBtn.addEventListener('click', function () {
+                if (!lastData) {
+                    alert('Load a trace first.');
+                    return;
+                }
+                navigator.clipboard.writeText(JSON.stringify(lastData, null, 2)).then(function () {
+                    copyJsonBtn.textContent = 'Copied!';
+                    setTimeout(function () { copyJsonBtn.textContent = 'Copy as JSON'; }, 2000);
+                });
+            });
+
+            downloadBtn.addEventListener('click', function () {
+                if (!lastData) {
+                    alert('Load a trace first.');
+                    return;
+                }
+                const blob = new Blob([JSON.stringify(lastData, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'trace-' + (lastData.requestId || 'export') + '.json';
+                a.click();
+                URL.revokeObjectURL(a.href);
+            });
+
+            if (parseQuery()) loadTrace();
+        })();
+    </script>
+</body>
+</html>
