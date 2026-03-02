@@ -66,12 +66,29 @@ export class TableRegistryDO extends DurableObject {
         return metadata || null;
     }
 
-    async listTables(limit?: number, startKey?: string): Promise<string[]> {
-        const options: DurableObjectListOptions = {
-            limit: limit || 100,
-            startAfter: startKey
+    async listTables(limit?: number, startKey?: string): Promise<{ TableNames: string[]; LastEvaluatedTableName?: string }> {
+        // DynamoDB list tables is ordered lexicographically
+        const tables = await this.ctx.storage.list<TableMetadata>();
+        let tableNames = Array.from(tables.keys()).sort();
+
+        if (startKey) {
+            const startIdx = tableNames.indexOf(startKey);
+            if (startIdx >= 0) {
+                tableNames = tableNames.slice(startIdx + 1);
+            }
+        }
+
+        const applyLimit = limit || 100;
+        const resultNames = tableNames.slice(0, applyLimit);
+
+        const result: { TableNames: string[]; LastEvaluatedTableName?: string } = {
+            TableNames: resultNames
         };
-        const tables = await this.ctx.storage.list<TableMetadata>(options);
-        return Array.from(tables.keys());
+
+        if (tableNames.length > applyLimit) {
+            result.LastEvaluatedTableName = resultNames[resultNames.length - 1];
+        }
+
+        return result;
     }
 }

@@ -135,16 +135,23 @@ export default {
 				const log = createLogger(env);
 				if (err.name === "ValidationError" || err.message.includes("Validation") || err.message.includes("No defined key schema")) {
 					log("router", `Validation err: ${err.message}`);
-					return new Response(JSON.stringify({ __type: "ValidationException", message: err.message.replace(/^ValidationError: /, '').replace(/^Error: /, '') }), {
+					return new Response(JSON.stringify({ __type: "ValidationException", message: err.message.replace(/^ValidationError: /, '').replace(/^ValidationException: /, '').replace(/^Error: /, '') }), {
 						status: 400,
 						headers: { "Content-Type": "application/x-amz-json-1.0" }
 					});
 				}
-				const type = err.message.includes("Cannot do operations on a non-existent table") || err.message.includes("ResourceNotFoundException") ? "ResourceNotFoundException"
-					: err.message.includes("already exists") ? "ResourceInUseException"
-						: "InternalServerError";
-				const status = type === "ResourceNotFoundException" || type === "ResourceInUseException" ? 400 : 500;
-				let displayMessage = err.message.replace(/^Error: /, '');
+
+				let type = "InternalServerError";
+				if (err.message.includes("Cannot do operations on a non-existent table") || err.message.includes("ResourceNotFoundException")) {
+					type = "ResourceNotFoundException";
+				} else if (err.message.includes("already exists")) {
+					type = "ResourceInUseException";
+				} else if (err.name === "ConditionalCheckFailedException" || err.message.includes("ConditionalCheckFailedException")) {
+					type = "ConditionalCheckFailedException";
+				}
+
+				const status = type === "InternalServerError" ? 500 : 400;
+				let displayMessage = err.message.replace(/^Error: /, '').replace(/^ConditionalCheckFailedException: /, '');
 				if (type === "ResourceInUseException" && err.message.includes("already exists")) {
 					displayMessage = "Cannot create preexisting table";
 				}
@@ -253,8 +260,8 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	}
 	if (op === "ListTables") {
 		const registry = env.TABLE_REGISTRY_DO.get(env.TABLE_REGISTRY_DO.idFromName("global-registry"));
-		const tables = await registry.listTables(body.Limit, body.ExclusiveStartTableName);
-		return new Response(JSON.stringify({ TableNames: tables }), { headers: baseHeaders });
+		const listResult = await registry.listTables(body.Limit, body.ExclusiveStartTableName);
+		return new Response(JSON.stringify(listResult), { headers: baseHeaders });
 	}
 	if (op === "DescribeTable") {
 		const { metadata } = await getTableMetadataCached(body.TableName, metadataService);
@@ -355,16 +362,26 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			const doKey = `${pkRaw}#${skRaw}`;
 			baseHeaders["X-SHIVAM-DB-SK"] = skRaw;
 			baseHeaders["X-SHIVAM-DB-LEADER-DO"] = `${pKey}-leader`;
-			await leaderStub.ensureLeaderAndPutItem(doKey, body.Item, partitionId, tableName, requestId);
+			const res: any = await leaderStub.ensureLeaderAndPutItem(doKey, body.Item, partitionId, tableName, requestId, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues);
 			addEvent("do_put_item", opStart, Date.now() - requestStartTs - opStart);
+			const totalMsWrite = Date.now() - requestStartTs;
+			addEvent("request", 0, totalMsWrite, { cold_path: metaSource !== "worker" });
+			flushTrace();
+			baseHeaders["X-SHIVAM-DB-Trace-Summary"] = buildTraceSummary(traceEvents, totalMsWrite);
+			return new Response(JSON.stringify(res || {}), { headers: baseHeaders });
 		} else if (op === "DeleteItem") {
 			const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
 			const skVal = skDef ? body.Key[skDef.AttributeName] : undefined;
 			const skRaw = getRaw(skVal) || "default";
 			const doKey = `${pkRaw}#${skRaw}`;
 			baseHeaders["X-SHIVAM-DB-SK"] = skRaw;
-			await leaderStub.ensureLeaderAndDeleteItem(doKey, partitionId, tableName, requestId);
+			const res: any = await leaderStub.ensureLeaderAndDeleteItem(doKey, partitionId, tableName, requestId, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues);
 			addEvent("do_delete_item", opStart, Date.now() - requestStartTs - opStart);
+			const totalMsWrite = Date.now() - requestStartTs;
+			addEvent("request", 0, totalMsWrite, { cold_path: metaSource !== "worker" });
+			flushTrace();
+			baseHeaders["X-SHIVAM-DB-Trace-Summary"] = buildTraceSummary(traceEvents, totalMsWrite);
+			return new Response(JSON.stringify(res || {}), { headers: baseHeaders });
 		} else if (op === "UpdateItem") {
 			const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
 			const skVal = skDef ? body.Key[skDef.AttributeName] : undefined;
@@ -372,17 +389,19 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			const doKey = `${pkRaw}#${skRaw}`;
 			baseHeaders["X-SHIVAM-DB-SK"] = skRaw;
 			const updates = body.AttributeUpdates || {};
-			await leaderStub.ensureLeaderAndUpdateItem(doKey, updates, partitionId, tableName, requestId);
+			const res: any = await leaderStub.ensureLeaderAndUpdateItem(doKey, updates, partitionId, tableName, requestId, body.UpdateExpression, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues);
 			addEvent("do_update_item", opStart, Date.now() - requestStartTs - opStart);
+
+			ctx.waitUntil(
+				getOrSetRoutingCache(pKey, () => env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey)).getRoutingConfig()).then(() => { })
+			);
+
+			const totalMsWrite = Date.now() - requestStartTs;
+			addEvent("request", 0, totalMsWrite, { cold_path: metaSource !== "worker" });
+			flushTrace();
+			baseHeaders["X-SHIVAM-DB-Trace-Summary"] = buildTraceSummary(traceEvents, totalMsWrite);
+			return new Response(JSON.stringify(res || {}), { headers: baseHeaders });
 		}
-		ctx.waitUntil(
-			getOrSetRoutingCache(pKey, () => env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey)).getRoutingConfig()).then(() => { })
-		);
-		const totalMsWrite = Date.now() - requestStartTs;
-		addEvent("request", 0, totalMsWrite, { cold_path: metaSource !== "worker" });
-		flushTrace();
-		baseHeaders["X-SHIVAM-DB-Trace-Summary"] = buildTraceSummary(traceEvents, totalMsWrite);
-		return new Response(JSON.stringify({}), { headers: baseHeaders });
 	}
 
 	if (op === "GetItem") {

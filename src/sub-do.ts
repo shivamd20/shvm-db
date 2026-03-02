@@ -14,11 +14,11 @@ const SUB_DO_FLUSH_DELAY_MS = 50;
 const SUB_DO_INSERT_CHUNK_SIZE = 200;
 
 interface PendingWrite {
-	sk: string;
-	value: unknown;
-	deleted: number;
-	partitionId: number;
-	tableName: string;
+    sk: string;
+    value: unknown;
+    deleted: number;
+    partitionId: number;
+    tableName: string;
 }
 
 export interface Env {
@@ -161,12 +161,79 @@ export class SubDO extends DurableObject<Env> {
         if (this.pendingWrites.length > 0) this.scheduleFlushAlarm();
     }
 
+    async ensureLeaderAndPutItem(sk: string, value: unknown, partitionId: number, tableName: string, requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string): Promise<any> {
+        await this.init(Role.LEADER);
+        return this.putItem(sk, value, partitionId, tableName, requestId, conditionExpression, expressionAttributeNames, expressionAttributeValues, returnValues);
+    }
+
+    async ensureLeaderAndDeleteItem(sk: string, partitionId: number, tableName: string, requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string): Promise<any> {
+        await this.init(Role.LEADER);
+        return this.deleteItem(sk, partitionId, tableName, requestId, conditionExpression, expressionAttributeNames, expressionAttributeValues, returnValues);
+    }
+
+    async ensureLeaderAndUpdateItem(sk: string, updates: Record<string, AttributeValueUpdate>, partitionId: number, tableName: string, requestId?: string, updateExpression?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string): Promise<any> {
+        await this.init(Role.LEADER);
+        return this.updateItem(sk, updates, partitionId, tableName, requestId, updateExpression, conditionExpression, expressionAttributeNames, expressionAttributeValues, returnValues);
+    }
+
+    private checkCondition(item: any, conditionExpression?: string, names?: Record<string, string>, values?: Record<string, any>): boolean {
+        if (!conditionExpression) return true;
+
+        let expr = conditionExpression.trim();
+
+        // Very basic parsing for attribute_not_exists and exact match (x = :v)
+        const notExistsMatch = expr.match(/attribute_not_exists\(([^)]+)\)/);
+        if (notExistsMatch) {
+            const attr = notExistsMatch[1].trim();
+            const realAttr = names?.[attr] || attr;
+            // Reserved keyword check (if no mapping provided)
+            if (!names?.[attr] && ['exists', 'name', 'status'].includes(realAttr.toLowerCase())) {
+                throw new Error(`Invalid ConditionExpression: Attribute name is a reserved keyword; reserved keyword: ${realAttr}`);
+            }
+            if (item && item[realAttr] !== undefined) return false;
+            return true; // it does not exist
+        }
+
+        const eqMatch = expr.match(/([^=]+)\s*=\s*(:\w+)/);
+        if (eqMatch) {
+            const attr = eqMatch[1].trim();
+            const valKey = eqMatch[2].trim();
+            const realAttr = names?.[attr] || attr;
+            const expectedVal = values?.[valKey];
+            const currentVal = item ? item[realAttr] : undefined;
+
+            if (JSON.stringify(currentVal) !== JSON.stringify(expectedVal)) return false;
+            return true;
+        }
+
+        return true; // default true if unknown expression for now
+    }
+
     // --- LEADER ONLY ---
 
-    async putItem(sk: string, value: unknown, partitionId: number, tableName: string = 'default', requestId?: string): Promise<void> {
+    async putItem(sk: string, value: unknown, partitionId: number, tableName: string = 'default', requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string): Promise<any> {
         const startMs = 0;
         const t0 = Date.now();
         if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
+
+        // Evaluate condition
+        if (conditionExpression) {
+            const currentItem = await this.getItem(sk, requestId) as any;
+            try {
+                const pass = this.checkCondition(currentItem, conditionExpression, expressionAttributeNames, expressionAttributeValues);
+                if (!pass) throw new Error("The conditional request failed");
+            } catch (e: any) {
+                if (e.message.includes("reserved keyword")) {
+                    const err = new Error(e.message);
+                    err.name = "ValidationException";
+                    throw err;
+                }
+                const err = new Error("The conditional request failed");
+                err.name = "ConditionalCheckFailedException";
+                throw err;
+            }
+        }
+
         this.log("SubDO", `[LEADER] putItem sk=${sk} partition=${partitionId} table=${tableName} (pending)`);
         this.pendingWrites.push({ sk, value, deleted: 0, partitionId, tableName });
         this.lru.put(sk, value);
@@ -174,45 +241,102 @@ export class SubDO extends DurableObject<Env> {
         const currentAlarm = await this.ctx.storage.getAlarm();
         if (currentAlarm == null) this.scheduleFlushAlarm();
         this.recordTrace(requestId, "subdo_put_item", startMs, Date.now() - t0);
+        return {}; // ReturnValues ALL_OLD not supported for PutItem in DynamoDB usually, only NONE
     }
 
-    async deleteItem(sk: string, partitionId: number, tableName: string = 'default', requestId?: string): Promise<void> {
+    async deleteItem(sk: string, partitionId: number, tableName: string = 'default', requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string): Promise<any> {
         const startMs = 0;
         const t0 = Date.now();
         if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
+
+        let currentItem: any = null;
+        if (conditionExpression || returnValues === "ALL_OLD") {
+            currentItem = await this.getItem(sk, requestId) as any;
+        }
+
+        // Evaluate condition
+        if (conditionExpression) {
+            try {
+                const pass = this.checkCondition(currentItem, conditionExpression, expressionAttributeNames, expressionAttributeValues);
+                if (!pass) throw new Error("The conditional request failed");
+            } catch (e: any) {
+                if (e.message.includes("reserved keyword")) {
+                    const err = new Error(e.message);
+                    err.name = "ValidationException";
+                    throw err;
+                }
+                const err = new Error("The conditional request failed");
+                err.name = "ConditionalCheckFailedException";
+                throw err;
+            }
+        }
+
         this.log("SubDO", `[LEADER] deleteItem sk=${sk} partition=${partitionId} table=${tableName} (pending)`);
         this.pendingWrites.push({ sk, value: null, deleted: 1, partitionId, tableName });
         this.lru.remove(sk);
         const currentAlarm = await this.ctx.storage.getAlarm();
         if (currentAlarm == null) this.scheduleFlushAlarm();
         this.recordTrace(requestId, "subdo_delete_item", startMs, Date.now() - t0);
+
+        if (returnValues === "ALL_OLD" && currentItem) return { Attributes: currentItem };
+        return {};
     }
 
-    async updateItem(sk: string, updates: Record<string, AttributeValueUpdate>, partitionId: number, tableName: string = 'default', requestId?: string): Promise<void> {
+    async updateItem(sk: string, updates: Record<string, AttributeValueUpdate>, partitionId: number, tableName: string = 'default', requestId?: string, updateExpression?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string): Promise<any> {
         const startMs = 0;
         const t0 = Date.now();
         if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
-        let currentItem: Record<string, any> = {};
-        const fromPending = this.getLatestPending(sk);
-        if (fromPending !== undefined) {
-            if (fromPending !== null) currentItem = fromPending as Record<string, any>;
-        } else {
-            const cached = this.lru.get(sk);
-            if (cached !== undefined) {
-                currentItem = cached as Record<string, any>;
-            } else {
-                const cursor = this.sql.exec(SubDOQueries.Items.GET_LATEST, sk);
-                const row = Array.from(cursor)[0] as any;
-                if (row && (row.deleted as number) === 0) {
-                    try { currentItem = JSON.parse(row.value as string); } catch (e) { this.log("SubDO", `Error parsing existing item for update sk=${sk}: ${e}`); }
+
+        let currentItem: Record<string, any> = (await this.getItem(sk, requestId) as any) || {};
+
+        // Evaluate condition
+        if (conditionExpression) {
+            try {
+                const pass = this.checkCondition(Object.keys(currentItem).length > 0 ? currentItem : null, conditionExpression, expressionAttributeNames, expressionAttributeValues);
+                if (!pass) throw new Error("The conditional request failed");
+            } catch (e: any) {
+                if (e.message.includes("reserved keyword")) {
+                    const err = new Error(e.message);
+                    err.name = "ValidationException";
+                    throw err;
                 }
+                const err = new Error("The conditional request failed");
+                err.name = "ConditionalCheckFailedException";
+                throw err;
             }
         }
-        for (const [key, update] of Object.entries(updates)) {
-            const action = update.Action || 'PUT';
-            if (action === 'PUT') currentItem[key] = update.Value;
-            else if (action === 'DELETE') delete currentItem[key];
+
+        if (updateExpression) {
+            // Very basic parse of 'SET a = :v REMOVE b'
+            const setMatch = updateExpression.match(/SET\s+([^R]+)/);
+            if (setMatch) {
+                const parts = setMatch[1].split(',');
+                for (const p of parts) {
+                    const [attr, valVar] = p.split('=').map(s => s.trim());
+                    const realAttr = expressionAttributeNames?.[attr] || attr;
+                    if (expressionAttributeValues && expressionAttributeValues[valVar]) {
+                        currentItem[realAttr] = expressionAttributeValues[valVar];
+                    }
+                }
+            }
+
+            const removeMatch = updateExpression.match(/REMOVE\s+(.+)/);
+            if (removeMatch) {
+                const parts = removeMatch[1].split(',');
+                for (let attr of parts) {
+                    attr = attr.trim();
+                    const realAttr = expressionAttributeNames?.[attr] || attr;
+                    delete currentItem[realAttr];
+                }
+            }
+        } else {
+            for (const [key, update] of Object.entries(updates)) {
+                const action = update.Action || 'PUT';
+                if (action === 'PUT') currentItem[key] = update.Value;
+                else if (action === 'DELETE') delete currentItem[key];
+            }
         }
+
         this.log("SubDO", `[LEADER] updateItem sk=${sk} partition=${partitionId} table=${tableName} (pending)`);
         this.pendingWrites.push({ sk, value: currentItem, deleted: 0, partitionId, tableName });
         this.lru.put(sk, currentItem);
@@ -220,21 +344,9 @@ export class SubDO extends DurableObject<Env> {
         const currentAlarm = await this.ctx.storage.getAlarm();
         if (currentAlarm == null) this.scheduleFlushAlarm();
         this.recordTrace(requestId, "subdo_update_item", startMs, Date.now() - t0);
-    }
 
-    async ensureLeaderAndPutItem(sk: string, value: unknown, partitionId: number, tableName: string, requestId?: string): Promise<void> {
-        await this.init(Role.LEADER);
-        await this.putItem(sk, value, partitionId, tableName, requestId);
-    }
-
-    async ensureLeaderAndDeleteItem(sk: string, partitionId: number, tableName: string, requestId?: string): Promise<void> {
-        await this.init(Role.LEADER);
-        await this.deleteItem(sk, partitionId, tableName, requestId);
-    }
-
-    async ensureLeaderAndUpdateItem(sk: string, updates: Record<string, AttributeValueUpdate>, partitionId: number, tableName: string, requestId?: string): Promise<void> {
-        await this.init(Role.LEADER);
-        await this.updateItem(sk, updates, partitionId, tableName, requestId);
+        if (returnValues === "ALL_NEW") return { Attributes: currentItem };
+        return {};
     }
 
     async ensureLeaderAndGetItem(sk: string, requestId?: string): Promise<unknown | null> {

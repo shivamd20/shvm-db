@@ -1,5 +1,5 @@
 import { describe, it, beforeAll, afterAll } from "vitest";
-import { CreateTableCommand, DeleteTableCommand, PutItemCommand, GetItemCommand, DeleteItemCommand } from "@aws-sdk/client-dynamodb";
+import { CreateTableCommand, DeleteTableCommand, PutItemCommand, GetItemCommand, DeleteItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { executeAgainstBoth } from "../testHarness";
 
 describe("Item APIs (CRUD)", () => {
@@ -97,6 +97,75 @@ describe("Item APIs (CRUD)", () => {
             Key: {
                 pk: { S: "item999" }
             }
+        });
+        await executeAgainstBoth(client => client.send(cmd));
+    });
+
+    it("UpdateItem - SET and REMOVE", async () => {
+        // First put an item
+        await executeAgainstBoth(client => client.send(new PutItemCommand({
+            TableName: tableName,
+            Item: {
+                pk: { S: "item-update" },
+                toUpdate: { S: "oldValue" },
+                toRemove: { N: "42" }
+            }
+        })));
+
+        // Then update it
+        const cmd = new UpdateItemCommand({
+            TableName: tableName,
+            Key: { pk: { S: "item-update" } },
+            UpdateExpression: "SET toUpdate = :newVal REMOVE toRemove",
+            ExpressionAttributeValues: {
+                ":newVal": { S: "newValue" }
+            },
+            ReturnValues: "ALL_NEW"
+        });
+        await executeAgainstBoth(client => client.send(cmd));
+    });
+
+    it("UpdateItem - Conditional failure (attribute_not_exists)", async () => {
+        await executeAgainstBoth(client => client.send(new PutItemCommand({
+            TableName: tableName,
+            Item: { pk: { S: "item-cond" }, exists: { BOOL: true } }
+        })));
+
+        const cmd = new UpdateItemCommand({
+            TableName: tableName,
+            Key: { pk: { S: "item-cond" } },
+            UpdateExpression: "SET newVal = :v",
+            ConditionExpression: "attribute_not_exists(exists)",
+            ExpressionAttributeValues: { ":v": { S: "1" } }
+        });
+        await executeAgainstBoth(client => client.send(cmd));
+    });
+
+    it("DeleteItem - ReturnValues ALL_OLD", async () => {
+        await executeAgainstBoth(client => client.send(new PutItemCommand({
+            TableName: tableName,
+            Item: { pk: { S: "item-delete-vals" }, data: { S: "to-be-deleted" } }
+        })));
+
+        const cmd = new DeleteItemCommand({
+            TableName: tableName,
+            Key: { pk: { S: "item-delete-vals" } },
+            ReturnValues: "ALL_OLD"
+        });
+        await executeAgainstBoth(client => client.send(cmd));
+    });
+
+    it("PutItem - Conditional failure", async () => {
+        await executeAgainstBoth(client => client.send(new PutItemCommand({
+            TableName: tableName,
+            Item: { pk: { S: "item-cond-put" }, version: { N: "1" } }
+        })));
+
+        const cmd = new PutItemCommand({
+            TableName: tableName,
+            Item: { pk: { S: "item-cond-put" }, version: { N: "2" } },
+            ConditionExpression: "version = :expected",
+            ExpressionAttributeValues: { ":expected": { N: "0" } }
         });
         await executeAgainstBoth(client => client.send(cmd));
     });
