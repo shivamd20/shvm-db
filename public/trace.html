@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,8 @@
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&family=Fira+Code&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&family=Fira+Code&display=swap"
+        rel="stylesheet">
     <style>
         .trace-toolbar {
             display: flex;
@@ -16,15 +18,17 @@
             flex-wrap: wrap;
             margin-bottom: 1.5rem;
         }
+
         .trace-toolbar input {
             padding: 0.6rem 1rem;
             border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.15);
-            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.05);
             color: var(--text-color);
             font-family: 'Fira Code', monospace;
             min-width: 280px;
         }
+
         .trace-toolbar button {
             padding: 0.6rem 1rem;
             border-radius: 8px;
@@ -35,48 +39,60 @@
             font-weight: 500;
             cursor: pointer;
         }
+
         .trace-toolbar button:hover {
             background: rgba(59, 130, 246, 0.25);
         }
+
         .trace-toolbar button.secondary {
             border-color: #555;
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
             color: #aaa;
         }
+
         .waterfall-wrap {
             overflow-x: auto;
-            background: rgba(255,255,255,0.02);
+            background: rgba(255, 255, 255, 0.02);
             border-radius: 8px;
             padding: 1rem;
         }
+
         .waterfall-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.9rem;
         }
+
         .waterfall-table th {
             text-align: left;
             padding: 0.5rem 1rem;
             color: #888;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
+
         .waterfall-table td {
             padding: 0.4rem 1rem;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             vertical-align: middle;
         }
+
         .waterfall-table tr:hover td {
-            background: rgba(255,255,255,0.03);
+            background: rgba(255, 255, 255, 0.03);
         }
+
         .waterfall-name {
             font-family: 'Fira Code', monospace;
             white-space: nowrap;
+            max-width: 200px;
         }
+
         .waterfall-bar-cell {
             min-width: 400px;
             position: relative;
             height: 28px;
+            text-wrap: initial;
         }
+
         .waterfall-scale {
             position: absolute;
             top: -18px;
@@ -86,12 +102,14 @@
             font-size: 10px;
             color: #666;
         }
+
         .waterfall-track {
             position: relative;
             height: 22px;
-            background: rgba(255,255,255,0.04);
+            background: rgba(255, 255, 255, 0.04);
             border-radius: 4px;
         }
+
         .waterfall-bar {
             position: absolute;
             top: 2px;
@@ -100,30 +118,42 @@
             background: var(--primary-color);
             min-width: 2px;
         }
+
         .waterfall-bar.duration {
             background: #8b5cf6;
         }
+
         .waterfall-duration-label {
             position: absolute;
             right: 4px;
             top: 2px;
             font-size: 11px;
-            color: rgba(255,255,255,0.9);
+            color: rgba(255, 255, 255, 0.9);
             font-family: 'Fira Code', monospace;
         }
+
         .trace-status {
             text-align: center;
             color: #888;
             padding: 2rem;
         }
+
         .trace-attr {
             font-size: 0.75rem;
             color: #888;
-            margin-top: 2px;
+            margin-top: 4px;
+            max-width: 300px;
+            word-break: break-all;
+            white-space: normal;
         }
-        .export-buttons { display: flex; gap: 0.5rem; }
+
+        .export-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -134,14 +164,17 @@
                 <a href="/benchmark-logs.html">Benchmarks</a>
                 <a href="/playground.html">Playground</a>
                 <a href="/trace.html" class="active">Trace</a>
-                <a href="https://github.com/shivamd20/shvm-db" target="_blank" rel="noopener" class="github-link">GitHub</a>
+                <a href="https://github.com/shivamd20/shvm-db" target="_blank" rel="noopener"
+                    class="github-link">GitHub</a>
             </nav>
         </header>
 
         <main>
             <section class="hero" style="min-height: auto; padding: 4rem 0 2rem;">
                 <h1>Request <span class="gradient-text">Trace</span></h1>
-                <p class="subtitle">Inspect request timing and cache hit/miss by request ID. Use the response header <code>X-Request-Id</code> to load a trace.</p>
+                <p class="subtitle">Inspect request timing and cache hit/miss by request ID. Use the response header
+                    <code>X-Request-Id</code> to load a trace.
+                </p>
             </section>
 
             <div class="trace-toolbar">
@@ -154,7 +187,8 @@
             </div>
 
             <div id="traceContent">
-                <div class="trace-status" id="traceStatus">Enter a request ID and click Load trace, or open this page with <code>?requestId=...</code></div>
+                <div class="trace-status" id="traceStatus">Enter a request ID and click Load trace, or open this page
+                    with <code>?requestId=...</code></div>
             </div>
         </main>
     </div>
@@ -196,12 +230,12 @@
                 const scaleW = 400;
                 const scale = scaleW / maxEnd;
 
-                let html = '<div class="waterfall-wrap"><table class="waterfall-table"><thead><tr><th>Step</th><th>Timeline (ms)</th><th>Duration (ms)</th></tr></thead><tbody>';
+                let html = '<div class="waterfall-wrap"><table class="waterfall-table"><thead><tr><th   style="max-width: 60px;" >Step</th><th>Timeline (ms)</th><th>Duration (ms)</th></tr></thead><tbody>';
                 for (const e of events) {
                     const left = (e.startMs / maxEnd) * 100;
                     const width = Math.max((e.durationMs / maxEnd) * 100, 0.5);
                     const attrStr = e.attributes && Object.keys(e.attributes).length
-                        ? '<div class="trace-attr">' + Object.entries(e.attributes).map(([k, v]) => k + ': ' + v).join(', ') + '</div>'
+                        ? '<div class="trace-attr">' + Object.entries(e.attributes).map(([k, v]) => k + ': ' + v).join('<br>') + '</div>'
                         : '';
                     html += '<tr><td class="waterfall-name">' + escapeHtml(e.step) + attrStr + '</td>';
                     html += '<td class="waterfall-bar-cell"><div class="waterfall-track">';
@@ -281,4 +315,5 @@
     </script>
     <script src="script.js"></script>
 </body>
+
 </html>

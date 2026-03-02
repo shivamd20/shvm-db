@@ -87,6 +87,8 @@ export interface ReplicationMessage {
     partitionId: number;
     tableName: string; // Table-scoped partition routing
     replicationFactor: number;
+    enqueuedTs?: number;
+    requestId?: string;
     // For backfill
     targetVersion?: number;
     batch?: ReplicationMessage[];

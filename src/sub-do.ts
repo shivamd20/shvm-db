@@ -19,6 +19,7 @@ interface PendingWrite {
     deleted: number;
     partitionId: number;
     tableName: string;
+    requestId?: string;
 }
 
 export interface Env {
@@ -150,30 +151,32 @@ export class SubDO extends DurableObject<Env> {
             const version = V + 1 + i;
             if (e.deleted === 1) {
                 return this.env.REPLICATION_QUEUE.send({
-                    type: 'DELETE', sk: e.sk, version, partitionId: e.partitionId, tableName: e.tableName, replicationFactor: 0
+                    type: 'DELETE', sk: e.sk, version, partitionId: e.partitionId, tableName: e.tableName, replicationFactor: 0,
+                    enqueuedTs: Date.now(), requestId: e.requestId
                 });
             }
             return this.env.REPLICATION_QUEUE.send({
-                type: 'PUT', sk: e.sk, value: e.value, version, partitionId: e.partitionId, tableName: e.tableName, replicationFactor: 0
+                type: 'PUT', sk: e.sk, value: e.value, version, partitionId: e.partitionId, tableName: e.tableName, replicationFactor: 0,
+                enqueuedTs: Date.now(), requestId: e.requestId
             });
         }));
 
         if (this.pendingWrites.length > 0) this.scheduleFlushAlarm();
     }
 
-    async ensureLeaderAndPutItem(sk: string, value: unknown, partitionId: number, tableName: string, requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string): Promise<any> {
+    async ensureLeaderAndPutItem(sk: string, value: unknown, partitionId: number, tableName: string, requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string, invokeTs?: number): Promise<any> {
         await this.init(Role.LEADER);
-        return this.putItem(sk, value, partitionId, tableName, requestId, conditionExpression, expressionAttributeNames, expressionAttributeValues, returnValues);
+        return this.putItem(sk, value, partitionId, tableName, requestId, conditionExpression, expressionAttributeNames, expressionAttributeValues, returnValues, invokeTs);
     }
 
-    async ensureLeaderAndDeleteItem(sk: string, partitionId: number, tableName: string, requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string): Promise<any> {
+    async ensureLeaderAndDeleteItem(sk: string, partitionId: number, tableName: string, requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string, invokeTs?: number): Promise<any> {
         await this.init(Role.LEADER);
-        return this.deleteItem(sk, partitionId, tableName, requestId, conditionExpression, expressionAttributeNames, expressionAttributeValues, returnValues);
+        return this.deleteItem(sk, partitionId, tableName, requestId, conditionExpression, expressionAttributeNames, expressionAttributeValues, returnValues, invokeTs);
     }
 
-    async ensureLeaderAndUpdateItem(sk: string, updates: Record<string, AttributeValueUpdate>, partitionId: number, tableName: string, requestId?: string, updateExpression?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string): Promise<any> {
+    async ensureLeaderAndUpdateItem(sk: string, updates: Record<string, AttributeValueUpdate>, partitionId: number, tableName: string, requestId?: string, updateExpression?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string, invokeTs?: number): Promise<any> {
         await this.init(Role.LEADER);
-        return this.updateItem(sk, updates, partitionId, tableName, requestId, updateExpression, conditionExpression, expressionAttributeNames, expressionAttributeValues, returnValues);
+        return this.updateItem(sk, updates, partitionId, tableName, requestId, updateExpression, conditionExpression, expressionAttributeNames, expressionAttributeValues, returnValues, invokeTs);
     }
 
     private checkCondition(item: any, conditionExpression?: string, names?: Record<string, string>, values?: Record<string, any>): boolean {
@@ -211,9 +214,10 @@ export class SubDO extends DurableObject<Env> {
 
     // --- LEADER ONLY ---
 
-    async putItem(sk: string, value: unknown, partitionId: number, tableName: string = 'default', requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string): Promise<any> {
+    async putItem(sk: string, value: unknown, partitionId: number, tableName: string = 'default', requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string, invokeTs?: number): Promise<any> {
         const startMs = 0;
         const t0 = Date.now();
+        if (invokeTs) this.recordTrace(requestId, "subdo_queue", 0, t0 - invokeTs);
         if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
 
         // Evaluate condition
@@ -235,7 +239,7 @@ export class SubDO extends DurableObject<Env> {
         }
 
         this.log("SubDO", `[LEADER] putItem sk=${sk} partition=${partitionId} table=${tableName} (pending)`);
-        this.pendingWrites.push({ sk, value, deleted: 0, partitionId, tableName });
+        this.pendingWrites.push({ sk, value, deleted: 0, partitionId, tableName, requestId });
         this.lru.put(sk, value);
         this.bf.add(sk);
         const currentAlarm = await this.ctx.storage.getAlarm();
@@ -244,9 +248,10 @@ export class SubDO extends DurableObject<Env> {
         return {}; // ReturnValues ALL_OLD not supported for PutItem in DynamoDB usually, only NONE
     }
 
-    async deleteItem(sk: string, partitionId: number, tableName: string = 'default', requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string): Promise<any> {
+    async deleteItem(sk: string, partitionId: number, tableName: string = 'default', requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string, invokeTs?: number): Promise<any> {
         const startMs = 0;
         const t0 = Date.now();
+        if (invokeTs) this.recordTrace(requestId, "subdo_queue", 0, t0 - invokeTs);
         if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
 
         let currentItem: any = null;
@@ -272,7 +277,7 @@ export class SubDO extends DurableObject<Env> {
         }
 
         this.log("SubDO", `[LEADER] deleteItem sk=${sk} partition=${partitionId} table=${tableName} (pending)`);
-        this.pendingWrites.push({ sk, value: null, deleted: 1, partitionId, tableName });
+        this.pendingWrites.push({ sk, value: null, deleted: 1, partitionId, tableName, requestId });
         this.lru.remove(sk);
         const currentAlarm = await this.ctx.storage.getAlarm();
         if (currentAlarm == null) this.scheduleFlushAlarm();
@@ -282,9 +287,10 @@ export class SubDO extends DurableObject<Env> {
         return {};
     }
 
-    async updateItem(sk: string, updates: Record<string, AttributeValueUpdate>, partitionId: number, tableName: string = 'default', requestId?: string, updateExpression?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string): Promise<any> {
+    async updateItem(sk: string, updates: Record<string, AttributeValueUpdate>, partitionId: number, tableName: string = 'default', requestId?: string, updateExpression?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string, invokeTs?: number): Promise<any> {
         const startMs = 0;
         const t0 = Date.now();
+        if (invokeTs) this.recordTrace(requestId, "subdo_queue", 0, t0 - invokeTs);
         if (this.role !== Role.LEADER) throw new Error(`Not Leader: I am ${this.role}`);
 
         let currentItem: Record<string, any> = (await this.getItem(sk, requestId) as any) || {};
@@ -338,7 +344,7 @@ export class SubDO extends DurableObject<Env> {
         }
 
         this.log("SubDO", `[LEADER] updateItem sk=${sk} partition=${partitionId} table=${tableName} (pending)`);
-        this.pendingWrites.push({ sk, value: currentItem, deleted: 0, partitionId, tableName });
+        this.pendingWrites.push({ sk, value: currentItem, deleted: 0, partitionId, tableName, requestId });
         this.lru.put(sk, currentItem);
         this.bf.add(sk);
         const currentAlarm = await this.ctx.storage.getAlarm();
@@ -349,9 +355,9 @@ export class SubDO extends DurableObject<Env> {
         return {};
     }
 
-    async ensureLeaderAndGetItem(sk: string, requestId?: string): Promise<unknown | null> {
+    async ensureLeaderAndGetItem(sk: string, requestId?: string, invokeTs?: number): Promise<unknown | null> {
         await this.init(Role.LEADER);
-        return this.getItem(sk, requestId);
+        return this.getItem(sk, requestId, invokeTs);
     }
 
     // --- COMMON APPLY ---
@@ -460,9 +466,10 @@ export class SubDO extends DurableObject<Env> {
 
     // --- READ ---
 
-    async getItem(sk: string, requestId?: string): Promise<unknown | null> {
+    async getItem(sk: string, requestId?: string, invokeTs?: number): Promise<unknown | null> {
         const startMs = 0;
         const t0 = Date.now();
+        if (invokeTs) this.recordTrace(requestId, "subdo_queue", 0, t0 - invokeTs);
         this.log("SubDO", `getItem sk=${sk} role=${this.role} state=${this.replicaState}`);
         if (this.replicaState !== ReplicaState.READABLE && this.role !== Role.LEADER && this.role !== Role.STANDBY) {
             throw new Error(`Replica not readable yet. State: ${this.replicaState}`);
@@ -473,19 +480,26 @@ export class SubDO extends DurableObject<Env> {
             this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { subdo_source: "pending" });
             return fromPending;
         }
+        const tLru = Date.now();
         const cached = this.lru.get(sk);
+        this.recordTrace(requestId, "subdo_lru_get", 0, Date.now() - tLru);
         if (cached !== undefined) {
             this.log("SubDO", `getItem CACHE HIT sk=${sk}`);
             this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { subdo_source: "lru_hit" });
             return cached;
         }
-        if (!this.bf.has(sk)) {
+        const tBf = Date.now();
+        const hasSk = this.bf.has(sk);
+        this.recordTrace(requestId, "subdo_bf_has", 0, Date.now() - tBf);
+        if (!hasSk) {
             this.log("SubDO", `getItem BLOOM NEGATIVE sk=${sk}`);
             this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { subdo_source: "bloom_negative" });
             return null;
         }
+        const tSql = Date.now();
         const cursor = this.sql.exec(SubDOQueries.Items.GET_LATEST, sk);
         const row = Array.from(cursor)[0] as any;
+        this.recordTrace(requestId, "subdo_sql_read", 0, Date.now() - tSql);
         if (!row || (row.deleted as number) === 1) {
             this.log("SubDO", `getItem NOT FOUND sk=${sk}`);
             this.recordTrace(requestId, "subdo_get_item", startMs, Date.now() - t0, { subdo_source: "sql_miss" });

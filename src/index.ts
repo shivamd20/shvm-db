@@ -30,6 +30,8 @@ const METADATA_CACHE_MAX_SIZE = 500;
 const metadataCache = new Map<string, { metadata: TableMetadata; expiresAt: number }>();
 const keySchemaCache = new Map<string, { pk: string; sk?: string }>();
 
+let isWorkerColdStart = true;
+
 function hashPartitionKey(pk: string, numPartitions: number): number {
 	let hash = 5381;
 	for (let i = 0; i < pk.length; i++) {
@@ -114,6 +116,12 @@ function buildTraceSummary(traceEvents: TraceEvent[], totalMs: number): string {
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+		const workerInvokeTs = Date.now();
+		const coldStart = isWorkerColdStart;
+		if (isWorkerColdStart) {
+			isWorkerColdStart = false;
+		}
+
 		const url = new URL(request.url);
 
 		if (url.pathname === "/api/trace") {
@@ -130,7 +138,7 @@ export default {
 
 		if (url.pathname.startsWith("/api") || request.headers.has("x-amz-target")) {
 			try {
-				return await handleDynamoRequest(request, env, ctx);
+				return await handleDynamoRequest(request, env, ctx, workerInvokeTs, coldStart);
 			} catch (err: any) {
 				const log = createLogger(env);
 				if (err.name === "ValidationError" || err.message.includes("Validation") || err.message.includes("No defined key schema")) {
@@ -197,6 +205,14 @@ export default {
 
 			log("queue", `replication type=${msg.type} table=${tableName} partition=${pId} sk=${msg.sk} v=${msg.version}`);
 
+			if (msg.enqueuedTs && msg.requestId) {
+				const qLatency = Date.now() - msg.enqueuedTs;
+				const traceStub = env.TRACE_DO.get(env.TRACE_DO.idFromName(TRACE_DO_SINGLETON_NAME));
+				promises.push(traceStub.recordEvent({
+					requestId: msg.requestId, step: "replication_queue_latency", startMs: 0, durationMs: qLatency
+				}).catch(() => { }));
+			}
+
 			const standbyId = env.SUB_DO.idFromName(`${pKey}-standby`);
 			const standbyStub = env.SUB_DO.get(standbyId);
 			promises.push(standbyStub.init(Role.STANDBY).then(() => standbyStub.applyMutation(msg)));
@@ -215,18 +231,37 @@ export default {
 	},
 } satisfies ExportedHandler<Env, ReplicationMessage>;
 
-async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionContext, workerInvokeTs: number = Date.now(), isColdStart: boolean = false): Promise<Response> {
 	const log = createLogger(env);
 	const requestId = getRequestId(request);
 	const requestStartTs = Date.now();
 	const target = request.headers.get("x-amz-target");
 	if (!target) return new Response("Missing x-amz-target header", { status: 400 });
 
+	const traceEvents: TraceEvent[] = [];
+	const requestBytes = Number(request.headers.get("content-length")) || 0;
+
+	const clientTsHeader = request.headers.get("x-shvm-client-ts");
+	if (clientTsHeader) {
+		const clientTs = parseInt(clientTsHeader, 10);
+		if (!isNaN(clientTs)) {
+			traceEvents.push({ requestId, step: "client_to_worker", startMs: 0, durationMs: workerInvokeTs - clientTs });
+		}
+	}
+	traceEvents.push({ requestId, step: "worker_routing", startMs: workerInvokeTs - requestStartTs, durationMs: requestStartTs - workerInvokeTs });
+
+	const reqCf = request.cf as any;
+	const cfAttributes: Record<string, string | number | boolean> = {};
+	if (reqCf) {
+		if (reqCf.colo) cfAttributes["cf_colo"] = reqCf.colo;
+		if (reqCf.clientTcpRtt) cfAttributes["cf_client_tcp_rtt"] = reqCf.clientTcpRtt;
+		if (reqCf.asOrganization) cfAttributes["cf_as_org"] = reqCf.asOrganization;
+	}
+
 	const body = await request.json() as any;
 	const op = target.split(".").pop() || "unknown";
 	const metadataService = new MetadataService(env);
 
-	const traceEvents: TraceEvent[] = [];
 	const baseHeaders: Record<string, string> = {
 		"Content-Type": "application/x-amz-json-1.0",
 		"X-Request-Id": requestId,
@@ -362,26 +397,28 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			const doKey = `${pkRaw}#${skRaw}`;
 			baseHeaders["X-SHIVAM-DB-SK"] = skRaw;
 			baseHeaders["X-SHIVAM-DB-LEADER-DO"] = `${pKey}-leader`;
-			const res: any = await leaderStub.ensureLeaderAndPutItem(doKey, body.Item, partitionId, tableName, requestId, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues);
+			const res: any = await leaderStub.ensureLeaderAndPutItem(doKey, body.Item, partitionId, tableName, requestId, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues, Date.now());
 			addEvent("do_put_item", opStart, Date.now() - requestStartTs - opStart);
+			const resJson = JSON.stringify(res || {});
 			const totalMsWrite = Date.now() - requestStartTs;
-			addEvent("request", 0, totalMsWrite, { cold_path: metaSource !== "worker" });
+			addEvent("request", 0, totalMsWrite, { cold_path: metaSource !== "worker", worker_cold_start: isColdStart, request_bytes: requestBytes, response_bytes: resJson.length, ...cfAttributes });
 			flushTrace();
 			baseHeaders["X-SHIVAM-DB-Trace-Summary"] = buildTraceSummary(traceEvents, totalMsWrite);
-			return new Response(JSON.stringify(res || {}), { headers: baseHeaders });
+			return new Response(resJson, { headers: baseHeaders });
 		} else if (op === "DeleteItem") {
 			const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
 			const skVal = skDef ? body.Key[skDef.AttributeName] : undefined;
 			const skRaw = getRaw(skVal) || "default";
 			const doKey = `${pkRaw}#${skRaw}`;
 			baseHeaders["X-SHIVAM-DB-SK"] = skRaw;
-			const res: any = await leaderStub.ensureLeaderAndDeleteItem(doKey, partitionId, tableName, requestId, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues);
+			const res: any = await leaderStub.ensureLeaderAndDeleteItem(doKey, partitionId, tableName, requestId, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues, Date.now());
 			addEvent("do_delete_item", opStart, Date.now() - requestStartTs - opStart);
+			const resJson = JSON.stringify(res || {});
 			const totalMsWrite = Date.now() - requestStartTs;
-			addEvent("request", 0, totalMsWrite, { cold_path: metaSource !== "worker" });
+			addEvent("request", 0, totalMsWrite, { cold_path: metaSource !== "worker", worker_cold_start: isColdStart, request_bytes: requestBytes, response_bytes: resJson.length, ...cfAttributes });
 			flushTrace();
 			baseHeaders["X-SHIVAM-DB-Trace-Summary"] = buildTraceSummary(traceEvents, totalMsWrite);
-			return new Response(JSON.stringify(res || {}), { headers: baseHeaders });
+			return new Response(resJson, { headers: baseHeaders });
 		} else if (op === "UpdateItem") {
 			const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
 			const skVal = skDef ? body.Key[skDef.AttributeName] : undefined;
@@ -389,18 +426,19 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			const doKey = `${pkRaw}#${skRaw}`;
 			baseHeaders["X-SHIVAM-DB-SK"] = skRaw;
 			const updates = body.AttributeUpdates || {};
-			const res: any = await leaderStub.ensureLeaderAndUpdateItem(doKey, updates, partitionId, tableName, requestId, body.UpdateExpression, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues);
+			const res: any = await leaderStub.ensureLeaderAndUpdateItem(doKey, updates, partitionId, tableName, requestId, body.UpdateExpression, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues, Date.now());
 			addEvent("do_update_item", opStart, Date.now() - requestStartTs - opStart);
 
 			ctx.waitUntil(
 				getOrSetRoutingCache(pKey, () => env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey)).getRoutingConfig()).then(() => { })
 			);
 
+			const resJson = JSON.stringify(res || {});
 			const totalMsWrite = Date.now() - requestStartTs;
-			addEvent("request", 0, totalMsWrite, { cold_path: metaSource !== "worker" });
+			addEvent("request", 0, totalMsWrite, { cold_path: metaSource !== "worker", worker_cold_start: isColdStart, request_bytes: requestBytes, response_bytes: resJson.length, ...cfAttributes });
 			flushTrace();
 			baseHeaders["X-SHIVAM-DB-Trace-Summary"] = buildTraceSummary(traceEvents, totalMsWrite);
-			return new Response(JSON.stringify(res || {}), { headers: baseHeaders });
+			return new Response(resJson, { headers: baseHeaders });
 		}
 	}
 
@@ -431,13 +469,15 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 
 		const doStart = Date.now() - requestStartTs;
 		const item = replicas.length === 0
-			? await rStub.ensureLeaderAndGetItem(doKey, requestId)
-			: await rStub.getItem(doKey, requestId);
+			? await rStub.ensureLeaderAndGetItem(doKey, requestId, Date.now())
+			: await rStub.getItem(doKey, requestId, Date.now());
 		const doEnd = Date.now() - requestStartTs;
 		addEvent("do_get_item", doStart, doEnd - doStart, { routing_target: routingTarget });
 		const totalMs = Date.now() - requestStartTs;
 		const coldPath = metaSource !== "worker" || !routingCacheHit;
-		addEvent("request", 0, totalMs, { cold_path: coldPath });
+		const resObj = item !== undefined && item !== null ? { Item: item } : {};
+		const resJson = JSON.stringify(resObj);
+		addEvent("request", 0, totalMs, { cold_path: coldPath, worker_cold_start: isColdStart, request_bytes: requestBytes, response_bytes: resJson.length, ...cfAttributes });
 		flushTrace();
 		baseHeaders["X-SHIVAM-DB-Trace-Summary"] = buildTraceSummary(traceEvents, totalMs);
 
@@ -450,14 +490,15 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			}
 		})());
 
-		return new Response(JSON.stringify(item !== undefined && item !== null ? { Item: item } : {}), { headers: baseHeaders });
+		return new Response(resJson, { headers: baseHeaders });
 	}
 
 	const totalMsFallback = Date.now() - requestStartTs;
-	addEvent("request", 0, totalMsFallback, { cold_path: true });
+	const resJson = JSON.stringify({ __type: "NotImplemented", message: `Operation ${op} not implemented` });
+	addEvent("request", 0, totalMsFallback, { cold_path: true, worker_cold_start: isColdStart, request_bytes: requestBytes, response_bytes: resJson.length, ...cfAttributes });
 	flushTrace();
 	baseHeaders["X-SHIVAM-DB-Trace-Summary"] = buildTraceSummary(traceEvents, totalMsFallback);
-	return new Response(JSON.stringify({ __type: "NotImplemented", message: `Operation ${op} not implemented` }), {
+	return new Response(resJson, {
 		status: 501,
 		headers: baseHeaders
 	});
