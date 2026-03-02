@@ -133,8 +133,8 @@ export default {
 				return await handleDynamoRequest(request, env, ctx);
 			} catch (err: any) {
 				const log = createLogger(env);
-				log.error("router", `Error: ${err?.message}`, err?.stack);
 				if (err.name === "ValidationError" || err.message.includes("Validation") || err.message.includes("No defined key schema")) {
+					log("router", `Validation err: ${err.message}`);
 					return new Response(JSON.stringify({ __type: "ValidationException", message: err.message.replace(/^ValidationError: /, '').replace(/^Error: /, '') }), {
 						status: 400,
 						headers: { "Content-Type": "application/x-amz-json-1.0" }
@@ -148,6 +148,13 @@ export default {
 				if (type === "ResourceInUseException" && err.message.includes("already exists")) {
 					displayMessage = "Cannot create preexisting table";
 				}
+
+				if (status === 500) {
+					log.error("router", `Error: ${err?.message}`, err?.stack);
+				} else {
+					log("router", `Expected err [${type}]: ${displayMessage}`);
+				}
+
 				return new Response(JSON.stringify({ __type: type, message: displayMessage }), {
 					status,
 					headers: { "Content-Type": "application/x-amz-json-1.0" }
