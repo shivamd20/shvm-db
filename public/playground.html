@@ -25,7 +25,8 @@
                 <a href="/benchmark-logs.html">Benchmarks</a>
                 <a href="/playground.html" class="active">Playground</a>
                 <a href="/trace.html">Trace</a>
-                <a href="https://github.com/shivamd20/shvm-db" target="_blank" rel="noopener" class="github-link">GitHub</a>
+                <a href="https://github.com/shivamd20/shvm-db" target="_blank" rel="noopener"
+                    class="github-link">GitHub</a>
             </nav>
         </header>
 
@@ -74,30 +75,38 @@
 
 
                         <div class="form-group" id="value-group">
-                            <label for="value">Value (JSON) <span id="value-hint" style="font-weight: normal; color: #888; font-size: 0.8rem; margin-left: 8px;"></span></label>
+                            <label for="value">Value (JSON) <span id="value-hint"
+                                    style="font-weight: normal; color: #888; font-size: 0.8rem; margin-left: 8px;"></span></label>
                             <textarea id="value" class="form-control" rows="8"
                                 placeholder='{\n  "name": "Alice",\n  "role": "admin"\n}'></textarea>
                         </div>
 
-                        <div class="advanced-toggle" style="margin: 15px 0; cursor: pointer; color: #a5d6ff; font-size: 0.9rem;" onclick="document.getElementById('advanced-params').style.display = document.getElementById('advanced-params').style.display === 'none' ? 'block' : 'none'">
+                        <div class="advanced-toggle"
+                            style="margin: 15px 0; cursor: pointer; color: #a5d6ff; font-size: 0.9rem;"
+                            onclick="document.getElementById('advanced-params').style.display = document.getElementById('advanced-params').style.display === 'none' ? 'block' : 'none'">
                             ► Advanced Parameters (Conditions, Updates)
                         </div>
-                        <div id="advanced-params" style="display: none; padding-left: 10px; border-left: 2px solid #333; margin-bottom: 20px;">
+                        <div id="advanced-params"
+                            style="display: none; padding-left: 10px; border-left: 2px solid #333; margin-bottom: 20px;">
                             <div class="form-group">
                                 <label for="condition-expression">ConditionExpression</label>
-                                <input type="text" id="condition-expression" class="form-control" placeholder="e.g. attribute_not_exists(PK)">
+                                <input type="text" id="condition-expression" class="form-control"
+                                    placeholder="e.g. attribute_not_exists(PK)">
                             </div>
                             <div class="form-group" id="update-group" style="display: none;">
                                 <label for="update-expression">UpdateExpression</label>
-                                <input type="text" id="update-expression" class="form-control" placeholder="e.g. SET #role = :r">
+                                <input type="text" id="update-expression" class="form-control"
+                                    placeholder="e.g. SET #role = :r">
                             </div>
                             <div class="form-group">
                                 <label for="expr-names">ExpressionAttributeNames (JSON)</label>
-                                <textarea id="expr-names" class="form-control" rows="2" placeholder='{"#role": "role"}'></textarea>
+                                <textarea id="expr-names" class="form-control" rows="2"
+                                    placeholder='{"#role": "role"}'></textarea>
                             </div>
                             <div class="form-group">
                                 <label for="expr-values">ExpressionAttributeValues (JSON)</label>
-                                <textarea id="expr-values" class="form-control" rows="2" placeholder='{":r": {"S": "admin"}}'></textarea>
+                                <textarea id="expr-values" class="form-control" rows="2"
+                                    placeholder='{":r": {"S": "admin"}}'></textarea>
                             </div>
                         </div>
 
@@ -105,7 +114,8 @@
                             <button id="run-btn" class="btn-run" style="flex: 1;">
                                 <span id="run-text">▶ Execute</span>
                             </button>
-                            <button id="snippet-btn" class="btn-secondary" style="white-space: nowrap;" title="Copy as cURL">
+                            <button id="snippet-btn" class="btn-secondary" style="white-space: nowrap;"
+                                title="Copy as cURL">
                                 📋 cURL
                             </button>
                         </div>
@@ -171,7 +181,7 @@
         const statusTime = document.getElementById('status-time');
         const historyList = document.getElementById('history-list');
         const networkList = document.getElementById('network-list');
-        
+
         const condExprInput = document.getElementById('condition-expression');
         const updateExprInput = document.getElementById('update-expression');
         const exprNamesInput = document.getElementById('expr-names');
@@ -208,11 +218,11 @@
                     if (s.en) exprNamesInput.value = s.en;
                     if (s.ev) exprValuesInput.value = s.ev;
                     operationSelect.dispatchEvent(new Event('change'));
-                } catch(e) {}
+                } catch (e) { }
             }
             const histJson = localStorage.getItem('shvm-db-playground-history');
             if (histJson) {
-                try { history = JSON.parse(histJson); renderHistory(); } catch(e) {}
+                try { history = JSON.parse(histJson); renderHistory(); } catch (e) { }
             }
         }
 
@@ -248,9 +258,9 @@
             valueGroup.style.display = (op === 'PutItem' || op === 'CreateTable' || op === 'UpdateItem') ? 'block' : 'none';
             keyGroup.style.display = (op === 'PutItem' || op === 'GetItem' || op === 'DeleteItem' || op === 'UpdateItem') ? 'block' : 'none';
             updateGroup.style.display = (op === 'UpdateItem') ? 'block' : 'none';
-            
+
             valueHint.textContent = '';
-            
+
             if (op === 'CreateTable') {
                 valueTextarea.value = JSON.stringify({
                     KeySchema: [
@@ -265,11 +275,11 @@
                 }, null, 2);
                 valueTextarea.placeholder = "Table Definition JSON";
             } else if (op === 'PutItem') {
-                if(valueTextarea.value.includes('KeySchema')) valueTextarea.value = "";
+                if (valueTextarea.value.includes('KeySchema')) valueTextarea.value = "";
                 valueTextarea.placeholder = '{\n  "name": "Alice",\n  "role": "admin"\n}';
                 valueHint.textContent = '(Does not need PK/SK fields)';
             } else if (op === 'UpdateItem') {
-                if(valueTextarea.value.includes('KeySchema')) valueTextarea.value = "";
+                if (valueTextarea.value.includes('KeySchema')) valueTextarea.value = "";
                 valueTextarea.placeholder = '{\n  "role": {"Action": "PUT", "Value": {"S": "admin"}}\n}';
                 valueHint.textContent = '(AttributeUpdates JSON, or leave empty if using UpdateExpression)';
             }
@@ -283,7 +293,10 @@
             try {
                 const response = await fetch('/api', {
                     method: 'POST',
-                    headers: { 'x-amz-target': 'DynamoDB_20120810.ListTables' },
+                    headers: {
+                        'x-amz-target': 'DynamoDB_20120810.ListTables',
+                        'x-shvm-client-ts': Date.now().toString()
+                    },
                     body: '{}'
                 });
                 const data = await response.json();
@@ -369,45 +382,46 @@
                     }
                 }
             }
-            
+
             // Advanced parameters
             const cond = condExprInput.value.trim();
             const upd = updateExprInput.value.trim();
             const eanRaw = exprNamesInput.value.trim();
             const eavRaw = exprValuesInput.value.trim();
-            
+
             if (cond) payload.ConditionExpression = cond;
             if (operation === 'UpdateItem' && upd) payload.UpdateExpression = upd;
-            
+
             if (eanRaw) {
-                try { payload.ExpressionAttributeNames = JSON.parse(eanRaw); } 
+                try { payload.ExpressionAttributeNames = JSON.parse(eanRaw); }
                 catch (e) { return { error: 'Invalid JSON in ExpressionAttributeNames' }; }
             }
             if (eavRaw) {
-                try { payload.ExpressionAttributeValues = JSON.parse(eavRaw); } 
+                try { payload.ExpressionAttributeValues = JSON.parse(eavRaw); }
                 catch (e) { return { error: 'Invalid JSON in ExpressionAttributeValues' }; }
             }
-            
+
             return { payload, operation };
         }
 
         snippetBtn.addEventListener('click', () => {
-             const build = buildPayload();
-             if (build.error) {
-                 alert(build.error);
-                 return;
-             }
-             
-             const curlCmd = `curl -X POST https://db.shvm.in/api \\
+            const build = buildPayload();
+            if (build.error) {
+                alert(build.error);
+                return;
+            }
+
+            const curlCmd = `curl -X POST https://db.shvm.in/api \\
   -H "Content-Type: application/json" \\
   -H "x-amz-target: DynamoDB_20120810.${build.operation}" \\
+  -H "x-shvm-client-ts: $(date +%s000)" \\
   -d '${JSON.stringify(build.payload)}'`;
-             
-             navigator.clipboard.writeText(curlCmd).then(() => {
-                 const original = snippetBtn.innerHTML;
-                 snippetBtn.innerHTML = '✅ Copied!';
-                 setTimeout(() => snippetBtn.innerHTML = original, 2000);
-             }).catch(() => alert('Failed to copy'));
+
+            navigator.clipboard.writeText(curlCmd).then(() => {
+                const original = snippetBtn.innerHTML;
+                snippetBtn.innerHTML = '✅ Copied!';
+                setTimeout(() => snippetBtn.innerHTML = original, 2000);
+            }).catch(() => alert('Failed to copy'));
         });
 
         // Execute request
@@ -431,7 +445,8 @@
                     method: 'POST',
                     headers: {
                         'x-amz-target': `DynamoDB_20120810.${operation}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'x-shvm-client-ts': Date.now().toString()
                     },
                     body: JSON.stringify(payload)
                 });
