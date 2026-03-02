@@ -44,6 +44,7 @@
                             <select id="operation" class="form-control">
                                 <option value="PutItem">PutItem</option>
                                 <option value="GetItem">GetItem</option>
+                                <option value="UpdateItem">UpdateItem</option>
                                 <option value="DeleteItem">DeleteItem</option>
                                 <option value="CreateTable">CreateTable</option>
                                 <option value="DeleteTable">DeleteTable</option>
@@ -73,14 +74,41 @@
 
 
                         <div class="form-group" id="value-group">
-                            <label for="value">Value (JSON)</label>
+                            <label for="value">Value (JSON) <span id="value-hint" style="font-weight: normal; color: #888; font-size: 0.8rem; margin-left: 8px;"></span></label>
                             <textarea id="value" class="form-control" rows="8"
                                 placeholder='{\n  "name": "Alice",\n  "role": "admin"\n}'></textarea>
                         </div>
 
-                        <button id="run-btn" class="btn-run">
-                            <span id="run-text">▶ Execute</span>
-                        </button>
+                        <div class="advanced-toggle" style="margin: 15px 0; cursor: pointer; color: #a5d6ff; font-size: 0.9rem;" onclick="document.getElementById('advanced-params').style.display = document.getElementById('advanced-params').style.display === 'none' ? 'block' : 'none'">
+                            ► Advanced Parameters (Conditions, Updates)
+                        </div>
+                        <div id="advanced-params" style="display: none; padding-left: 10px; border-left: 2px solid #333; margin-bottom: 20px;">
+                            <div class="form-group">
+                                <label for="condition-expression">ConditionExpression</label>
+                                <input type="text" id="condition-expression" class="form-control" placeholder="e.g. attribute_not_exists(PK)">
+                            </div>
+                            <div class="form-group" id="update-group" style="display: none;">
+                                <label for="update-expression">UpdateExpression</label>
+                                <input type="text" id="update-expression" class="form-control" placeholder="e.g. SET #role = :r">
+                            </div>
+                            <div class="form-group">
+                                <label for="expr-names">ExpressionAttributeNames (JSON)</label>
+                                <textarea id="expr-names" class="form-control" rows="2" placeholder='{"#role": "role"}'></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="expr-values">ExpressionAttributeValues (JSON)</label>
+                                <textarea id="expr-values" class="form-control" rows="2" placeholder='{":r": {"S": "admin"}}'></textarea>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px;">
+                            <button id="run-btn" class="btn-run" style="flex: 1;">
+                                <span id="run-text">▶ Execute</span>
+                            </button>
+                            <button id="snippet-btn" class="btn-secondary" style="white-space: nowrap;" title="Copy as cURL">
+                                📋 cURL
+                            </button>
+                        </div>
                     </div>
 
                     <div class="ide-content" id="history-panel" style="display: none; padding: 0;">
@@ -133,14 +161,65 @@
 
         const valueTextarea = document.getElementById('value');
         const valueGroup = document.getElementById('value-group');
+        const valueHint = document.getElementById('value-hint');
         const runBtn = document.getElementById('run-btn');
         const runText = document.getElementById('run-text');
+        const snippetBtn = document.getElementById('snippet-btn');
         const responseViewer = document.getElementById('response-viewer');
         const responseStatus = document.getElementById('response-status');
         const statusCode = document.getElementById('status-code');
         const statusTime = document.getElementById('status-time');
         const historyList = document.getElementById('history-list');
         const networkList = document.getElementById('network-list');
+        
+        const condExprInput = document.getElementById('condition-expression');
+        const updateExprInput = document.getElementById('update-expression');
+        const exprNamesInput = document.getElementById('expr-names');
+        const exprValuesInput = document.getElementById('expr-values');
+        const updateGroup = document.getElementById('update-group');
+
+        // State persistence
+        function saveState() {
+            localStorage.setItem('shvm-db-playground-state', JSON.stringify({
+                op: operationSelect.value,
+                table: tableNameInput.value,
+                pk: pkInput.value,
+                sk: skInput.value,
+                val: valueTextarea.value,
+                cond: condExprInput.value,
+                upd: updateExprInput.value,
+                en: exprNamesInput.value,
+                ev: exprValuesInput.value
+            }));
+        }
+
+        function loadState() {
+            const stateJson = localStorage.getItem('shvm-db-playground-state');
+            if (stateJson) {
+                try {
+                    const s = JSON.parse(stateJson);
+                    if (s.op) operationSelect.value = s.op;
+                    if (s.table) tableNameInput.value = s.table;
+                    if (s.pk) pkInput.value = s.pk;
+                    if (s.sk) skInput.value = s.sk;
+                    if (s.val !== undefined) valueTextarea.value = s.val;
+                    if (s.cond) condExprInput.value = s.cond;
+                    if (s.upd) updateExprInput.value = s.upd;
+                    if (s.en) exprNamesInput.value = s.en;
+                    if (s.ev) exprValuesInput.value = s.ev;
+                    operationSelect.dispatchEvent(new Event('change'));
+                } catch(e) {}
+            }
+            const histJson = localStorage.getItem('shvm-db-playground-history');
+            if (histJson) {
+                try { history = JSON.parse(histJson); renderHistory(); } catch(e) {}
+            }
+        }
+
+        document.querySelectorAll('input, select, textarea').forEach(el => {
+            el.addEventListener('input', saveState);
+            el.addEventListener('change', saveState);
+        });
 
         // Tab switching
         document.querySelectorAll('.ide-tab').forEach(tab => {
@@ -166,9 +245,12 @@
         // Show/hide value field based on operation
         operationSelect.addEventListener('change', () => {
             const op = operationSelect.value;
-            valueGroup.style.display = (op === 'PutItem' || op === 'CreateTable') ? 'block' : 'none';
-            keyGroup.style.display = (op === 'PutItem' || op === 'GetItem' || op === 'DeleteItem') ? 'block' : 'none';
-
+            valueGroup.style.display = (op === 'PutItem' || op === 'CreateTable' || op === 'UpdateItem') ? 'block' : 'none';
+            keyGroup.style.display = (op === 'PutItem' || op === 'GetItem' || op === 'DeleteItem' || op === 'UpdateItem') ? 'block' : 'none';
+            updateGroup.style.display = (op === 'UpdateItem') ? 'block' : 'none';
+            
+            valueHint.textContent = '';
+            
             if (op === 'CreateTable') {
                 valueTextarea.value = JSON.stringify({
                     KeySchema: [
@@ -183,8 +265,13 @@
                 }, null, 2);
                 valueTextarea.placeholder = "Table Definition JSON";
             } else if (op === 'PutItem') {
-                valueTextarea.value = "";
+                if(valueTextarea.value.includes('KeySchema')) valueTextarea.value = "";
                 valueTextarea.placeholder = '{\n  "name": "Alice",\n  "role": "admin"\n}';
+                valueHint.textContent = '(Does not need PK/SK fields)';
+            } else if (op === 'UpdateItem') {
+                if(valueTextarea.value.includes('KeySchema')) valueTextarea.value = "";
+                valueTextarea.placeholder = '{\n  "role": {"Action": "PUT", "Value": {"S": "admin"}}\n}';
+                valueHint.textContent = '(AttributeUpdates JSON, or leave empty if using UpdateExpression)';
             }
         });
 
@@ -211,89 +298,133 @@
 
         // Init
         fetchTables();
+        loadState();
+        operationSelect.dispatchEvent(new Event('change'));
 
-
-        // Execute request
-        runBtn.addEventListener('click', async () => {
-            if (isLoading) return;
-
+        function buildPayload() {
             const operation = operationSelect.value;
             const tableName = tableNameInput.value.trim();
             const pk = pkInput.value.trim();
             const sk = skInput.value.trim();
 
             if (!tableName && operation !== 'ListTables') {
-                alert('Table Name is required');
-                return;
+                return { error: 'Table Name is required' };
             }
 
-            if ((operation === 'PutItem' || operation === 'GetItem' || operation === 'DeleteItem') && (!pk)) {
-                alert('Partition Key is required'); // SK might be optional depending on table, but for MVP usually required
-                return;
+            if ((operation === 'PutItem' || operation === 'GetItem' || operation === 'DeleteItem' || operation === 'UpdateItem') && (!pk)) {
+                return { error: 'Partition Key is required' };
             }
 
+            let payload = {};
 
-            if (operation === 'Query') {
-                alert('Query operation is not implemented in this MVP');
+            if (operation === 'ListTables') {
+                payload = {};
+            } else if (operation === 'CreateTable') {
+                try {
+                    const def = JSON.parse(valueTextarea.value);
+                    payload = {
+                        TableName: tableName,
+                        ...def
+                    };
+                } catch (e) {
+                    return { error: 'Invalid JSON for Table Definition' };
+                }
+            } else if (operation === 'DeleteTable') {
+                payload = { TableName: tableName };
+            } else if (operation === 'PutItem' || operation === 'GetItem' || operation === 'DeleteItem' || operation === 'UpdateItem') {
+                payload = {
+                    TableName: tableName,
+                    Key: {
+                        PK: { S: pk },
+                    }
+                };
+                if (sk) payload.Key.SK = { S: sk };
+            }
+
+            if (operation === 'PutItem') {
+                const valueStr = valueTextarea.value.trim();
+                let valObj = {};
+
+                if (valueStr) {
+                    try {
+                        valObj = JSON.parse(valueStr);
+                    } catch (e) {
+                        return { error: 'Invalid JSON in value field' };
+                    }
+                }
+
+                payload.Item = {
+                    PK: { S: pk },
+                    ...wrapAttributes(valObj)
+                };
+                if (sk) payload.Item.SK = { S: sk };
+                delete payload.Key;
+            } else if (operation === 'UpdateItem') {
+                const valueStr = valueTextarea.value.trim();
+                if (valueStr) {
+                    try {
+                        payload.AttributeUpdates = JSON.parse(valueStr);
+                    } catch (e) {
+                        return { error: 'Invalid JSON in AttributeUpdates value field' };
+                    }
+                }
+            }
+            
+            // Advanced parameters
+            const cond = condExprInput.value.trim();
+            const upd = updateExprInput.value.trim();
+            const eanRaw = exprNamesInput.value.trim();
+            const eavRaw = exprValuesInput.value.trim();
+            
+            if (cond) payload.ConditionExpression = cond;
+            if (operation === 'UpdateItem' && upd) payload.UpdateExpression = upd;
+            
+            if (eanRaw) {
+                try { payload.ExpressionAttributeNames = JSON.parse(eanRaw); } 
+                catch (e) { return { error: 'Invalid JSON in ExpressionAttributeNames' }; }
+            }
+            if (eavRaw) {
+                try { payload.ExpressionAttributeValues = JSON.parse(eavRaw); } 
+                catch (e) { return { error: 'Invalid JSON in ExpressionAttributeValues' }; }
+            }
+            
+            return { payload, operation };
+        }
+
+        snippetBtn.addEventListener('click', () => {
+             const build = buildPayload();
+             if (build.error) {
+                 alert(build.error);
+                 return;
+             }
+             
+             const curlCmd = `curl -X POST https://db.shvm.in/api \\
+  -H "Content-Type: application/json" \\
+  -H "x-amz-target: DynamoDB_20120810.${build.operation}" \\
+  -d '${JSON.stringify(build.payload)}'`;
+             
+             navigator.clipboard.writeText(curlCmd).then(() => {
+                 const original = snippetBtn.innerHTML;
+                 snippetBtn.innerHTML = '✅ Copied!';
+                 setTimeout(() => snippetBtn.innerHTML = original, 2000);
+             }).catch(() => alert('Failed to copy'));
+        });
+
+        // Execute request
+        runBtn.addEventListener('click', async () => {
+            if (isLoading) return;
+
+            const build = buildPayload();
+            if (build.error) {
+                alert(build.error);
                 return;
             }
+            const { operation, payload } = build;
 
             setLoading(true);
             const startTime = Date.now();
 
             try {
-                let payload = {};
-
-                if (operation === 'ListTables') {
-                    payload = {};
-                } else if (operation === 'CreateTable') {
-                    try {
-                        const def = JSON.parse(valueTextarea.value);
-                        payload = {
-                            TableName: tableName,
-                            ...def
-                        };
-                    } catch (e) {
-                        alert('Invalid JSON for Table Definition');
-                        setLoading(false);
-                        return;
-                    }
-                } else if (operation === 'DeleteTable') {
-                    payload = { TableName: tableName };
-                } else if (operation === 'PutItem' || operation === 'GetItem' || operation === 'DeleteItem') {
-                    payload = {
-                        TableName: tableName,
-                        Key: {
-                            PK: { S: pk },
-                            SK: sk ? { S: sk } : undefined // Handle optional SK if we wanted, but validation enforces it currently
-                        }
-                    };
-                    // Ensure SK is removed if undefined so it doesn't send "SK": undefined
-                    if (!sk) delete payload.Key.SK;
-                }
-
-                if (operation === 'PutItem') {
-                    const valueStr = valueTextarea.value.trim();
-                    let valObj = {};
-
-                    if (valueStr) {
-                        try {
-                            valObj = JSON.parse(valueStr);
-                        } catch (e) {
-                            alert('Invalid JSON in value field');
-                            setLoading(false);
-                            return;
-                        }
-                    }
-
-                    payload.Item = {
-                        PK: { S: pk },
-                        ...wrapAttributes(valObj)
-                    };
-                    if (sk) payload.Item.SK = { S: sk };
-
-                    delete payload.Key;
-                }
 
 
                 const response = await fetch('/api', {
@@ -333,8 +464,8 @@
 
                 addToHistory({
                     operation,
-                    pk: pk || '-',
-                    sk: sk || '-',
+                    pk: pkInput.value.trim() || '-',
+                    sk: skInput.value.trim() || '-',
                     timestamp: new Date().toISOString(),
                     status: response.status
                 });
@@ -410,6 +541,7 @@
         function addToHistory(entry) {
             history.unshift(entry);
             if (history.length > 50) history.pop(); // Keep last 50
+            localStorage.setItem('shvm-db-playground-history', JSON.stringify(history));
             renderHistory();
         }
 

@@ -1,5 +1,14 @@
 [
   {
+    "id": "20260303_020106",
+    "date": "2026-03-03T02:01:54.697283",
+    "variants": [
+      "Hot Partition Stress",
+      "Sustained Mixed Load",
+      "Concurrency Scaling"
+    ]
+  },
+  {
     "id": "20260228_185107",
     "date": "2026-02-28T19:09:58.170849",
     "variants": [

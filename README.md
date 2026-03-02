@@ -10,7 +10,7 @@ DynamoDB proves that a **simple API + brutal operational discipline** can scale 
 
 * Cloudflare Durable Objects for single-writer partitions
 * SQLite as the per-partition storage engine
-* Object storage (R2) as the durability and recovery backbone
+* A unified global Table Registry for multi-tenant table management
 
 This is not about beating DynamoDB in production today. It is about:
 
@@ -55,9 +55,9 @@ This is not about beating DynamoDB in production today. It is about:
 
 The following are **explicitly excluded from MVP**:
 
-* Global tables / multi-region active writes
+* Global tables / multi-region active writes (Tables are global across the Cloudflare account, but inherently run in the region of the primary DO)
 * Automatic partition splitting
-* Secondary indexes (LSI / GSI)
+* Secondary indexes (LSI / GSI) (See #Open Problems)
 * Multi-item transactions
 * Strong cross-partition consistency
 * Hot partition mitigation
@@ -65,6 +65,24 @@ The following are **explicitly excluded from MVP**:
 * IAM-grade access control
 
 If it smells like Spanner, it is out.
+
+---
+
+## API Compatibility Matrix
+
+| DynamoDB Operation | Implemented? | Notes |
+| :--- | :--- | :--- |
+| `CreateTable` | ✅ Yes | Creates table in the global registry. Instantly active. |
+| `DeleteTable` | ✅ Yes | Removes table metadata. Underlying DOs orphaned. |
+| `ListTables` | ✅ Yes | Supports pagination (`Limit`, `ExclusiveStartTableName`). |
+| `DescribeTable`| ✅ Yes | Returns schema metadata from the global registry. |
+| `PutItem` | ✅ Yes | Full condition expression support. |
+| `GetItem` | ✅ Yes | Consistent reads from Leader or eventually consistent from Replicas. |
+| `UpdateItem` | ✅ Yes | Supports `AttributeUpdates` and `UpdateExpression` (partially). |
+| `DeleteItem` | ✅ Yes | Full condition expression support. |
+| `Query` | ❌ No | Planned future addition for Sort Key ranged queries. |
+| `Scan` | ❌ No | Requires cross-partition aggregation. Excluded from MVP. |
+| `BatchWriteItem` | ❌ No | Excluded from MVP. |
 
 ---
 
@@ -97,13 +115,17 @@ If it smells like Spanner, it is out.
 
 The system uses a **Two-Layer Architecture** to separate orchestration from storage.
 
-1.  **PartitionDO (The Orchestrator)**:
+1.  **TableRegistryDO (The Global Registry)**:
+    *   A single global DO (`global-registry`) that stores metadata for all tables.
+    *   Ensures cross-account table uniqueness and handles `CreateTable` / `ListTables`.
+
+2.  **PartitionDO (The Orchestrator)**:
     *   Maps a Partition Key (PK) to a "logical partition".
     *   Does **NOT** store data.
     *   Maintains the `RoutingTable` (Leader ID, Replica IDs).
     *   Handles autoscaling decisions (spawning new replicas).
 
-2.  **SubDO (The Data Plane)**:
+3.  **SubDO (The Data Plane)**:
     *   Where the actual data lives.
     *   **Leader SubDO**: Handles all writes for a PK. Serializes transactions.
     *   **Replica SubDOs**: Read-only copies that tail the Leader via queue.
@@ -281,10 +303,6 @@ The MVP cost model is intentionally simple and transparent. There are **no hidde
 
    * One API request → one Durable Object invocation
 
-4. **Object storage**
-
-   * Not used in MVP
-
 ---
 
 ### Relative Cost Characteristics
@@ -376,6 +394,17 @@ These are intentional MVP constraints.
 
 ---
 
+## Detailed Bottleneck Breakdown
+
+When running `shvm-db` at high throughput, the system hits hard ceilings due to the intentional MVP constraints and the underlying Cloudflare Workers runtime. Here is exactly why the limits exist:
+
+1. **Single-Threaded Execution**: Each Durable Object runs on a single JavaScript isolate. A "hot partition" (many writes to the same PK) forces all requests sequentially through the same single-threaded Event Loop.
+2. **SQLite Lock Contention**: While SQLite is fast, every `PutItem` or `UpdateItem` executes inside a SQLite transaction. During the commit phase, the lock prevents other async tasks in the DO from mutating the DB. 
+3. **RPC Overhead**: The architecture relies on jumping boundaries: `Worker -> PartitionDO -> SubDO Leader`. Each boundary hop adds latency (usually ~1-2ms), meaning a single operation has a baseline floor it cannot dip below.
+4. **Queue Replication Lag**: Standard Cloudflare Queues are used to replicate data from Leader to Replicas. Under massive load, the queue delivery can back up, increasing replica lag to several seconds instead of milliseconds.
+
+---
+
 ## Roadmap / Future Work
 
 ### Phase 0.5: WAL Offload (Next Immediate Step)
@@ -406,11 +435,34 @@ These are intentional MVP constraints.
 * Two-phase commit (best effort)
 * Partition-scoped transactions first
 
-### Phase 6: Storage Engine Evolution
+### Phase 5: Storage Engine Evolution
 
 * Replace SQLite with LSM engine
 * Compaction scheduling
 * Columnar experiments
+
+---
+
+## Open Problems / Contributing
+
+This project is open-source because solving distributed systems problems is fun. The following represent the hardest "Open Problems" in the `shvm-db` architecture. PRs tackling these are highly welcome!
+
+* **Partition Splitting**: Right now, partitions are static. Implement a mechanism to dynamically detect when a single `SubDO` exceeds a storage or compute threshold, bisect its Sort Key range, and spawn two new `SubDOs` without downtime.
+* **Global Secondary Indexes (GSI)**: How do we project attributes from a Leader SubDO into a totally different Partition Key space reliably? We need an eventually consistent projection engine.
+* **Cross-Partition Transactions**: Implement Two-Phase Commit (2PC) or an equivalent coordinator across multiple `PartitionDOs` to support DynamoDB's `TransactWriteItems` API.
+
+---
+
+## FAQ
+
+**Q: Is this ready for production?**
+A: **Absolutely not.** This is an experimental educational project designed to demystify how partitioned databases work. Do not store mission-critical data in this.
+
+**Q: How does durability work without R2?**
+A: In this MVP iteration, durability relies 100% on the Cloudflare Durable Object's attached persistent storage. Cloudflare provides strong guarantees on DO storage, but if the DO storage gets corrupted, there is no external WAL/R2 backup to replay from.
+
+**Q: Why not use Cloudflare D1 instead of embedded SQLite?**
+A: D1 doesn't (currently) offer the same per-partition single-writer isolation model required to replicate DynamoDB's exact semantics and test these specific bottlenecks. Embedding SQLite gives the Leader DO complete control over the transaction lifecycle.
 
 ---
 
