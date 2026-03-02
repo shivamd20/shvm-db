@@ -7,7 +7,7 @@
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
-		"test": "vitest run",
+		"test": "cd compat-test && npm run test",
 		"test:local": "vitest run",
 		"test:live": "TEST_URL=https://db.shvm.in vitest run",
 		"cf-typegen": "wrangler types",

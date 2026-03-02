@@ -6,7 +6,7 @@ export async function spawnDynamoLocal(): Promise<{ port: number, process: Child
     const child = spawn(
         "docker",
         ["run", "--rm", "-p", `${port}:8000`, "amazon/dynamodb-local"],
-        { stdio: "inherit" }
+        { stdio: "inherit", detached: true }
     );
 
     return { port, process: child };

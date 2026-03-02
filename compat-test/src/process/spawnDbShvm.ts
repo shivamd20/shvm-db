@@ -18,7 +18,7 @@ export async function spawnDbShvm(): Promise<{ port: number, process: ChildProce
   const child = spawn(
     "npx",
     ["wrangler", "dev", "--port", port.toString(), "--persist-to", persistDir],
-    { cwd: rootDir, stdio: "inherit" }
+    { cwd: rootDir, stdio: "inherit", detached: true }
   );
 
   return { port, process: child };

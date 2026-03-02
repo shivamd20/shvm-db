@@ -139,3 +139,4 @@ run_output.log
 # Temporary test files
 *.sqlite3
 *.sqlite3-journal
+compat-test/.test-ports.json
