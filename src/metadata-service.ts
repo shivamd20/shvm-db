@@ -32,7 +32,7 @@ export class MetadataService {
 
         const metadata = await this.registry.getTable(tableName);
         if (!metadata) {
-            throw new Error(`Table not found: ${tableName}`);
+            throw new Error(`Cannot do operations on a non-existent table`);
         }
 
         try {
@@ -53,7 +53,7 @@ export class MetadataService {
     async deleteTable(tableName: string): Promise<any> {
         const result = await this.registry.deleteTable(tableName);
         if (!result) {
-            throw new Error(`Table not found: ${tableName}`); // Will be converted to ResourceNotFoundException in index.ts
+            throw new Error(`Cannot do operations on a non-existent table`);
         }
 
         // Invalidate Cache (best-effort)

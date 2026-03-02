@@ -26,7 +26,48 @@ function calculateSize(value: any): number {
 export function validateKey(name: string, value: any, maxSize: number): void {
     const size = calculateSize(value);
     if (size > maxSize) {
-        throw new ValidationError(`${name} size ${size} bytes exceeds limit of ${maxSize} bytes`);
+        throw new ValidationError("Hash primary key values must be under 2048 bytes, and range primary key values must be under 1024 bytes");
+    }
+}
+
+export function validateAttributeValue(value: any, depth: number = 0): void {
+    if (depth >= 32) {
+        throw new ValidationError("Nesting Levels have exceeded supported limits: Attributes in the item have nested levels beyond supported limit");
+    }
+    if (value === null || value === undefined) return;
+
+    if (value.SS !== undefined) {
+        if (!Array.isArray(value.SS) || value.SS.length === 0) {
+            throw new ValidationError("One or more parameter values were invalid: An string set  may not be empty");
+        }
+        const unique = new Set(value.SS);
+        if (unique.size !== value.SS.length) {
+            throw new ValidationError(`One or more parameter values were invalid: Input collection [${value.SS.join(', ')}] contains duplicates`);
+        }
+    }
+    if (value.NS !== undefined) {
+        if (!Array.isArray(value.NS) || value.NS.length === 0) {
+            throw new ValidationError("One or more parameter values were invalid: An number set  may not be empty");
+        }
+        const unique = new Set(value.NS);
+        if (unique.size !== value.NS.length) {
+            throw new ValidationError(`One or more parameter values were invalid: Input collection [${value.NS.join(', ')}] contains duplicates`);
+        }
+    }
+    if (value.BS !== undefined) {
+        if (!Array.isArray(value.BS) || value.BS.length === 0) {
+            throw new ValidationError("One or more parameter values were invalid: An binary set  may not be empty");
+        }
+    }
+    if (value.M !== undefined && typeof value.M === 'object') {
+        for (const k in value.M) {
+            validateAttributeValue(value.M[k], depth + 1);
+        }
+    }
+    if (value.L !== undefined && Array.isArray(value.L)) {
+        for (const v of value.L) {
+            validateAttributeValue(v, depth + 1);
+        }
     }
 }
 
@@ -34,7 +75,13 @@ export function validateItemAgainstSchema(item: any, metadata: TableMetadata): v
     // 1. Validate Item Size
     const size = calculateSize(item);
     if (size > ITEM_MAX_SIZE) {
-        throw new ValidationError(`Item size ${size} bytes exceeds limit of ${ITEM_MAX_SIZE} bytes`);
+        throw new ValidationError(`Item size has exceeded the maximum allowed size`);
+    }
+
+    if (item && typeof item === "object") {
+        for (const key in item) {
+            validateAttributeValue(item[key]);
+        }
     }
 
     // 2. Validate Keys Existence and Types
@@ -43,30 +90,23 @@ export function validateItemAgainstSchema(item: any, metadata: TableMetadata): v
         let attrVal = item[attrName];
 
         if (!attrVal) {
-            if (keySchema.KeyType === 'RANGE') {
-                const def = metadata.AttributeDefinitions.find(d => d.AttributeName === attrName);
-                if (def) {
-                    if (def.AttributeType === 'S') {
-                        attrVal = { S: "default" };
-                        item[attrName] = attrVal;
-                    } else if (def.AttributeType === 'N') {
-                        attrVal = { N: "0" };
-                        item[attrName] = attrVal;
-                    } else if (def.AttributeType === 'B') {
-                        attrVal = { B: "" };
-                        item[attrName] = attrVal;
-                    }
-                }
-            }
-
-            if (!attrVal) {
-                throw new ValidationError(`Missing key attribute: ${attrName}`);
-            }
+            throw new ValidationError(`One of the required keys was not given a value`);
         }
 
         const def = metadata.AttributeDefinitions.find(d => d.AttributeName === attrName);
         if (def) {
-            validateType(attrName, attrVal, def.AttributeType);
+            const type = def.AttributeType;
+            if ((type === 'S' && attrVal.S === undefined) ||
+                (type === 'N' && attrVal.N === undefined) ||
+                (type === 'B' && attrVal.B === undefined)) {
+                throw new ValidationError(`One or more parameter values were invalid: Type mismatch for key`);
+            }
+            if (type === 'S' && attrVal.S === "") {
+                throw new ValidationError(`One or more parameter values are not valid. The AttributeValue for a key attribute cannot contain an empty string value. Key: ${attrName}`);
+            }
+            if (type === 'B' && attrVal.B === "") {
+                throw new ValidationError(`One or more parameter values are not valid. The AttributeValue for a key attribute cannot contain an empty binary value. Key: ${attrName}`);
+            }
 
             // Validate Max Size for Keys
             const rawValue = getRawValue(attrVal);

@@ -21,10 +21,15 @@ export interface TableMetadata {
     TableStatus: "CREATING" | "ACTIVE" | "DELETING";
     CreationDateTime: number;
     ProvisionedThroughput?: ProvisionedThroughput;
+    BillingModeSummary?: any;
+    ItemCount?: number;
+    TableSizeBytes?: number;
+    TableArn?: string;
 }
 
 export interface TableDescription {
-    Table: TableMetadata;
+    Table?: TableMetadata;
+    TableDescription?: TableMetadata;
 }
 
 export interface CreateTableInput {
@@ -32,6 +37,7 @@ export interface CreateTableInput {
     KeySchema: KeySchemaElement[];
     AttributeDefinitions: AttributeDefinition[];
     ProvisionedThroughput?: ProvisionedThroughput;
+    BillingMode?: string;
 }
 
 export interface AttributeValue {

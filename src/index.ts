@@ -94,6 +94,14 @@ function getRaw(v: any): string | undefined {
 	return s != null ? String(s) : undefined;
 }
 
+function validateAndGetRawKey(v: any, attrName: string): string {
+	if (v === undefined || v === null) throw new ValidationError("One of the required keys was not given a value");
+	if (v.S === undefined && v.N === undefined && v.B === undefined) throw new ValidationError("One or more parameter values were invalid: Type mismatch for key");
+	const val = v.S ?? v.N ?? v.B;
+	if (val === "") throw new ValidationError(`One or more parameter values are not valid. The AttributeValue for a key attribute cannot contain an empty string value. Key: ${attrName}`);
+	return String(val);
+}
+
 function buildTraceSummary(traceEvents: TraceEvent[], totalMs: number): string {
 	const seg: Record<string, number> = { total_ms: totalMs };
 	for (const e of traceEvents) {
@@ -126,15 +134,22 @@ export default {
 			} catch (err: any) {
 				const log = createLogger(env);
 				log.error("router", `Error: ${err?.message}`, err?.stack);
-				if (err instanceof ValidationError) {
-					return new Response(JSON.stringify({ __type: "ValidationException", message: err.message }), {
+				if (err.name === "ValidationError" || err.message.includes("Validation") || err.message.includes("No defined key schema")) {
+					return new Response(JSON.stringify({ __type: "ValidationException", message: err.message.replace(/^ValidationError: /, '').replace(/^Error: /, '') }), {
 						status: 400,
 						headers: { "Content-Type": "application/x-amz-json-1.0" }
 					});
 				}
-				const type = err.message.includes("not found") ? "ResourceNotFoundException" : "InternalServerError";
-				return new Response(JSON.stringify({ __type: type, message: err.message }), {
-					status: type === "ResourceNotFoundException" ? 400 : 500,
+				const type = err.message.includes("Cannot do operations on a non-existent table") || err.message.includes("ResourceNotFoundException") ? "ResourceNotFoundException"
+					: err.message.includes("already exists") ? "ResourceInUseException"
+						: "InternalServerError";
+				const status = type === "ResourceNotFoundException" || type === "ResourceInUseException" ? 400 : 500;
+				let displayMessage = err.message.replace(/^Error: /, '');
+				if (type === "ResourceInUseException" && err.message.includes("already exists")) {
+					displayMessage = "Cannot create preexisting table";
+				}
+				return new Response(JSON.stringify({ __type: type, message: displayMessage }), {
+					status,
 					headers: { "Content-Type": "application/x-amz-json-1.0" }
 				});
 			}
@@ -229,9 +244,9 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 		keySchemaCache.delete(body.TableName);
 		return new Response(JSON.stringify(res), { headers: baseHeaders });
 	}
-		if (op === "ListTables") {
-			const registry = env.TABLE_REGISTRY_DO.get(env.TABLE_REGISTRY_DO.idFromName("global-registry"));
-			const tables = await registry.listTables(body.Limit, body.ExclusiveStartTableName);
+	if (op === "ListTables") {
+		const registry = env.TABLE_REGISTRY_DO.get(env.TABLE_REGISTRY_DO.idFromName("global-registry"));
+		const tables = await registry.listTables(body.Limit, body.ExclusiveStartTableName);
 		return new Response(JSON.stringify({ TableNames: tables }), { headers: baseHeaders });
 	}
 	if (op === "DescribeTable") {
@@ -260,8 +275,8 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	let pKey: string;
 
 	if (keySchema) {
-		const pkRaw = getRaw(body.Key?.[keySchema.pk] ?? body.Item?.[keySchema.pk]);
-		if (!pkRaw) throw new ValidationError("Partition Key value invalid");
+		const pkVal = body.Key?.[keySchema.pk] ?? body.Item?.[keySchema.pk];
+		const pkRaw = validateAndGetRawKey(pkVal, keySchema.pk);
 		partitionId = hashPartitionKey(pkRaw, NUM_PARTITIONS);
 		pKey = `${tableName}::partition-${partitionId}`;
 		addEvent("hash_partition_key", 0, 0, { from_cache: true });
@@ -295,8 +310,8 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 		addEvent("get_table_metadata", metaStart, Date.now() - requestStartTs - metaStart, { metadata_source: metaSource });
 		const pkDef = metadata.KeySchema.find(k => k.KeyType === "HASH");
 		if (!pkDef) throw new Error("Table definition missing Partition Key");
-		const pkRaw = getRaw(body.Key?.[pkDef.AttributeName] ?? body.Item?.[pkDef.AttributeName]);
-		if (!pkRaw) throw new ValidationError("Partition Key value invalid");
+		const pkVal = body.Key?.[pkDef.AttributeName] ?? body.Item?.[pkDef.AttributeName];
+		const pkRaw = validateAndGetRawKey(pkVal, pkDef.AttributeName);
 		partitionId = hashPartitionKey(pkRaw, NUM_PARTITIONS);
 		pKey = `${tableName}::partition-${partitionId}`;
 		addEvent("hash_partition_key", Date.now() - requestStartTs, 0);
@@ -314,8 +329,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 
 	const pkDef = metadata.KeySchema.find(k => k.KeyType === "HASH");
 	const pkVal = (op === "PutItem" ? body.Item : body.Key)?.[pkDef!.AttributeName];
-	const pkRaw = getRaw(pkVal);
-	if (!pkRaw) throw new ValidationError("Partition Key value invalid");
+	const pkRaw = validateAndGetRawKey(pkVal, pkDef!.AttributeName);
 
 	baseHeaders["X-SHIVAM-DB-PARTITION-ID-INTERNAL"] = String(partitionId);
 	baseHeaders["X-SHIVAM-DB-PARTITION-KEY"] = pKey;
@@ -355,7 +369,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			addEvent("do_update_item", opStart, Date.now() - requestStartTs - opStart);
 		}
 		ctx.waitUntil(
-			getOrSetRoutingCache(pKey, () => env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey)).getRoutingConfig()).then(() => {})
+			getOrSetRoutingCache(pKey, () => env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey)).getRoutingConfig()).then(() => { })
 		);
 		const totalMsWrite = Date.now() - requestStartTs;
 		addEvent("request", 0, totalMsWrite, { cold_path: metaSource !== "worker" });
