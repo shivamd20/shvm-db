@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { TraceDOQueries } from "./sql/queries";
+import { runTraceDOMigrations } from "./sql/migrations";
 import type { TraceEvent } from "./trace-types";
 
 const TRACE_RETENTION_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -18,7 +19,7 @@ export class TraceDO extends DurableObject<Env> {
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env);
 		this.sql = ctx.storage.sql;
-		this.sql.exec(TraceDOQueries.Schema.CREATE_EVENTS);
+		runTraceDOMigrations(this.sql);
 	}
 
 	private scheduleFlushAlarm(): void {

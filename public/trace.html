@@ -226,6 +226,12 @@
                     traceContent.innerHTML = '<div class="trace-status" id="traceStatus">No events for this request.</div>';
                     return;
                 }
+                // Sort events chronologically by start time, then longest duration
+                events.sort((a, b) => {
+                    if (a.startMs !== b.startMs) return a.startMs - b.startMs;
+                    return b.durationMs - a.durationMs;
+                });
+
                 const maxEnd = Math.max(...events.map(e => e.startMs + e.durationMs), 1);
                 const scaleW = 400;
                 const scale = scaleW / maxEnd;

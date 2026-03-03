@@ -1,5 +1,6 @@
+import { z } from "zod";
 import { PARTITION_KEY_MAX_SIZE, SORT_KEY_MAX_SIZE, ITEM_MAX_SIZE } from './constants';
-import { TableMetadata } from './types';
+import { TableMetadata } from "./types";
 
 export class ValidationError extends Error {
     constructor(message: string) {
@@ -7,6 +8,45 @@ export class ValidationError extends Error {
         this.name = "ValidationError";
     }
 }
+
+// Zod schema for deep DynamoDB AttributeValue (limited type depth for performance)
+const DynamoValueSchema: z.ZodType<any> = z.lazy(() =>
+    z.object({
+        S: z.string().optional(),
+        N: z.string().optional(),
+        B: z.string().optional(),
+        SS: z.array(z.string()).min(1, { message: "An string set  may not be empty" }).optional(),
+        NS: z.array(z.string()).min(1, { message: "An number set  may not be empty" }).optional(),
+        BS: z.array(z.string()).min(1, { message: "An binary set  may not be empty" }).optional(),
+        M: z.record(z.string(), DynamoValueSchema).optional(),
+        L: z.array(DynamoValueSchema).optional(),
+        NULL: z.boolean().optional(),
+        BOOL: z.boolean().optional(),
+    }).refine((val) => Object.keys(val).length === 1, {
+        message: "AttributeValue must contain exactly one of the supported data types",
+    })
+);
+
+export const CreateTableSchema = z.object({
+    TableName: z.string().min(3).max(255),
+    KeySchema: z.array(
+        z.object({
+            AttributeName: z.string().min(1),
+            KeyType: z.enum(["HASH", "RANGE"]),
+        })
+    ).min(1).max(2),
+    AttributeDefinitions: z.array(
+        z.object({
+            AttributeName: z.string().min(1),
+            AttributeType: z.enum(["S", "N", "B"]),
+        })
+    ).min(1),
+    ProvisionedThroughput: z.object({
+        ReadCapacityUnits: z.number().min(1),
+        WriteCapacityUnits: z.number().min(1),
+    }).optional(),
+    BillingMode: z.enum(["PROVISIONED", "PAY_PER_REQUEST"]).optional(),
+});
 
 function calculateSize(value: any): number {
     if (value === null || value === undefined) return 0;
@@ -17,74 +57,60 @@ function calculateSize(value: any): number {
     } else if (typeof value === 'boolean') {
         return 1;
     } else if (typeof value === 'object') {
-        // Handle DynamoDB JSON format or plain JSON
         return new TextEncoder().encode(JSON.stringify(value)).length;
     }
     return 0;
 }
 
-export function validateKey(name: string, value: any, maxSize: number): void {
-    const size = calculateSize(value);
-    if (size > maxSize) {
-        throw new ValidationError("Hash primary key values must be under 2048 bytes, and range primary key values must be under 1024 bytes");
-    }
+function getRawValue(typedValue: any): any {
+    if (!typedValue) return typedValue;
+    if (typedValue.S !== undefined) return typedValue.S;
+    if (typedValue.N !== undefined) return typedValue.N;
+    if (typedValue.B !== undefined) return typedValue.B;
+    return typedValue;
 }
 
-export function validateAttributeValue(value: any, depth: number = 0): void {
-    if (depth >= 32) {
+function validateDepthAndSets(value: any, depth: number = 0): void {
+    if (depth > 32) {
         throw new ValidationError("Nesting Levels have exceeded supported limits: Attributes in the item have nested levels beyond supported limit");
     }
-    if (value === null || value === undefined) return;
-
-    if (value.SS !== undefined) {
-        if (!Array.isArray(value.SS) || value.SS.length === 0) {
-            throw new ValidationError("One or more parameter values were invalid: An string set  may not be empty");
-        }
-        const unique = new Set(value.SS);
-        if (unique.size !== value.SS.length) {
-            throw new ValidationError(`One or more parameter values were invalid: Input collection [${value.SS.join(', ')}] contains duplicates`);
-        }
-    }
-    if (value.NS !== undefined) {
-        if (!Array.isArray(value.NS) || value.NS.length === 0) {
-            throw new ValidationError("One or more parameter values were invalid: An number set  may not be empty");
-        }
-        const unique = new Set(value.NS);
-        if (unique.size !== value.NS.length) {
-            throw new ValidationError(`One or more parameter values were invalid: Input collection [${value.NS.join(', ')}] contains duplicates`);
-        }
-    }
-    if (value.BS !== undefined) {
-        if (!Array.isArray(value.BS) || value.BS.length === 0) {
-            throw new ValidationError("One or more parameter values were invalid: An binary set  may not be empty");
-        }
-    }
-    if (value.M !== undefined && typeof value.M === 'object') {
-        for (const k in value.M) {
-            validateAttributeValue(value.M[k], depth + 1);
-        }
-    }
-    if (value.L !== undefined && Array.isArray(value.L)) {
-        for (const v of value.L) {
-            validateAttributeValue(v, depth + 1);
+    if (value && typeof value === "object") {
+        if (value.M) {
+            for (const v of Object.values(value.M)) {
+                validateDepthAndSets(v, depth + 1);
+            }
+        } else if (value.L) {
+            for (const v of value.L) {
+                validateDepthAndSets(v, depth + 1);
+            }
+        } else if (value.SS) {
+            if (new Set(value.SS).size !== value.SS.length) throw new ValidationError(`One or more parameter values were invalid: Input collection [${value.SS.join(", ")}] contains duplicates`);
+        } else if (value.NS) {
+            if (new Set(value.NS).size !== value.NS.length) throw new ValidationError(`One or more parameter values were invalid: Input collection [${value.NS.join(", ")}] contains duplicates`);
+        } else if (value.BS) {
+            if (new Set(value.BS).size !== value.BS.length) throw new ValidationError(`One or more parameter values were invalid: Input collection [${value.BS.join(", ")}] contains duplicates`);
         }
     }
 }
 
 export function validateItemAgainstSchema(item: any, metadata: TableMetadata): void {
-    // 1. Validate Item Size
     const size = calculateSize(item);
     if (size > ITEM_MAX_SIZE) {
         throw new ValidationError(`Item size has exceeded the maximum allowed size`);
     }
 
     if (item && typeof item === "object") {
-        for (const key in item) {
-            validateAttributeValue(item[key]);
+        for (const [k, v] of Object.entries(item)) {
+            const parsed = DynamoValueSchema.safeParse(v);
+            if (!parsed.success) {
+                const message = parsed.error.issues[0]?.message || "Invalid AttributeValue";
+                // Convert Zod deep errors into typical AWS API errors
+                throw new ValidationError(`One or more parameter values were invalid: ${message}`);
+            }
+            validateDepthAndSets(v, 1);
         }
     }
 
-    // 2. Validate Keys Existence and Types
     for (const keySchema of metadata.KeySchema) {
         const attrName = keySchema.AttributeName;
         let attrVal = item[attrName];
@@ -108,47 +134,12 @@ export function validateItemAgainstSchema(item: any, metadata: TableMetadata): v
                 throw new ValidationError(`One or more parameter values are not valid. The AttributeValue for a key attribute cannot contain an empty binary value. Key: ${attrName}`);
             }
 
-            // Validate Max Size for Keys
             const rawValue = getRawValue(attrVal);
             const limit = keySchema.KeyType === 'HASH' ? PARTITION_KEY_MAX_SIZE : SORT_KEY_MAX_SIZE;
-            validateKey(attrName, rawValue, limit);
+            const size = calculateSize(rawValue);
+            if (size > limit) {
+                throw new ValidationError("Hash primary key values must be under 2048 bytes, and range primary key values must be under 1024 bytes");
+            }
         }
     }
-}
-
-export function validateItem(item: any): void {
-    // Deprecated single-table validation, keeping for backward compatibility if needed, 
-    // but ideally we switch to schema validation.
-    const size = calculateSize(item);
-    if (size > ITEM_MAX_SIZE) {
-        throw new ValidationError(`Item size ${size} bytes exceeds limit of ${ITEM_MAX_SIZE} bytes`);
-    }
-
-    // Check PK
-    const pk = item.PK || item.pk || item.id;
-    if (pk) {
-        const val = getRawValue(pk);
-        validateKey("Partition Key", val, PARTITION_KEY_MAX_SIZE);
-    }
-
-    // Check SK
-    const sk = item.SK || item.sk;
-    if (sk) {
-        const val = getRawValue(sk);
-        validateKey("Sort Key", val, SORT_KEY_MAX_SIZE);
-    }
-}
-
-function getRawValue(typedValue: any): any {
-    if (!typedValue) return typedValue;
-    if (typedValue.S !== undefined) return typedValue.S;
-    if (typedValue.N !== undefined) return typedValue.N;
-    if (typedValue.B !== undefined) return typedValue.B;
-    return typedValue;
-}
-
-function validateType(name: string, value: any, type: "S" | "N" | "B"): void {
-    if (type === 'S' && value.S === undefined) throw new ValidationError(`Attribute ${name} must be of type String`);
-    if (type === 'N' && value.N === undefined) throw new ValidationError(`Attribute ${name} must be of type Number`);
-    if (type === 'B' && value.B === undefined) throw new ValidationError(`Attribute ${name} must be of type Binary`);
 }

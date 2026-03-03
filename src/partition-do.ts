@@ -4,6 +4,7 @@ import type { TraceDO } from "./trace-do";
 import { RoutingTable, ReplicaState, Role } from "./types";
 import { createDOLogger, Logger } from "./debug";
 import { PartitionDOQueries } from "./sql/queries";
+import { runPartitionDOMigrations } from "./sql/migrations";
 import type { TraceEvent } from "./trace-types";
 
 const TRACE_DO_SINGLETON_NAME = "shvm-db-trace";
@@ -29,7 +30,7 @@ export class PartitionDO extends DurableObject<Env> {
         super(ctx, env);
         this.sql = ctx.storage.sql;
         this.log = createDOLogger(env.SHVM_DEBUG);
-        this.sql.exec(PartitionDOQueries.Schema.CREATE_REPLICAS);
+        runPartitionDOMigrations(this.sql);
         this.log("PartitionDO", `constructor id=${ctx.id.toString()}`);
     }
 

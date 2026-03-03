@@ -18,11 +18,14 @@
 		"deploy:live": "wrangler deploy && echo 'Live deployment active. Update your client config to point to the deployed URL.'"
 	},
 	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.12.18",
 		"@cloudflare/workers-types": "^4.20240208.0",
 		"@types/node": "^24.10.1",
 		"typescript": "^5.5.2",
 		"vitest": "^3.0.0",
 		"wrangler": "^4.51.0"
 	},
-	"dependencies": {}
+	"dependencies": {
+		"zod": "^4.3.6"
+	}
 }
