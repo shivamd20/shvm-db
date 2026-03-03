@@ -147,7 +147,7 @@ This ensures correctness, debuggability, and eliminates premature optimization.
 * SQLite runs in WAL mode
 * SQLite is the **source of truth**
 
-No auxiliary caches or layers exist in MVP.
+A write-through Cloudflare Cache API layer (LRU) exists in front of SQLite for fast reads.
 
 ---
 
@@ -184,10 +184,11 @@ Durability relies on SQLite WAL + Cloudflare Durable Object storage guarantees.
 
 1.  **API Gateway**: Worker hashes `tableName + PK` → `PartitionDO ID`.
 2.  **Action**: Worker forwards request to **PartitionDO**.
-3.  **Execution**: DO executes SQLite `SELECT`.
-4.  **Return**: Result returned to client.
+3.  **Cache Check**: DO checks Cloudflare Cache API (LRU). If hit, returns instantly.
+4.  **Execution (Miss)**: DO executes SQLite `SELECT` and populates cache.
+5.  **Return**: Result returned to client.
 
-No caching, no multi-hop orchestration. Just deterministic edge routing and SQLite.
+Write-through caching ensures strong consistency while maximizing read throughput.
 
 ---
 
