@@ -51,7 +51,7 @@ export async function setupTestEnvironment(): Promise<TestEnvironment> {
 export function teardownTestEnvironment() {
     if (oracleProcess && oracleProcess.pid) {
         try {
-            process.kill(-oracleProcess.pid, "SIGKILL");
+            process.kill(oracleProcess.pid, "SIGKILL");
         } catch (e) {
             console.error(e);
         }
@@ -59,7 +59,7 @@ export function teardownTestEnvironment() {
     }
     if (testProcess && testProcess.pid) {
         try {
-            process.kill(-testProcess.pid, "SIGKILL");
+            process.kill(testProcess.pid, "SIGKILL");
         } catch (e) {
             console.error(e);
         }

@@ -1,18 +1,17 @@
 import { DurableObject } from "cloudflare:workers";
-import { SubDO } from "./sub-do";
 import type { TraceDO } from "./trace-do";
-import { RoutingTable, ReplicaState, Role } from "./types";
+import { AttributeValueUpdate } from "./types";
 import { createDOLogger, Logger } from "./debug";
 import { PartitionDOQueries } from "./sql/queries";
 import { runPartitionDOMigrations } from "./sql/migrations";
 import type { TraceEvent } from "./trace-types";
+import { evaluateCondition, evaluateUpdateExpression } from "./dynamo-ast";
 
 const TRACE_DO_SINGLETON_NAME = "shvm-db-trace";
 const DEFAULT_REPORT_LOAD_THRESHOLD = 10;
 
 export interface Env {
     PARTITION_DO: DurableObjectNamespace<PartitionDO>;
-    SUB_DO: DurableObjectNamespace<SubDO>;
     TRACE_DO?: DurableObjectNamespace<TraceDO>;
     SHVM_DEBUG?: string;
     REPORT_LOAD_THRESHOLD?: string;
@@ -23,8 +22,6 @@ export class PartitionDO extends DurableObject<Env> {
     sql: SqlStorage;
     loadCounter: number = 0;
     private log: Logger;
-    /** In-memory routing cache; updated on register/deregister so getRoutingConfig avoids SQL. */
-    private replicasCache: string[] | null = null;
 
     constructor(ctx: DurableObjectState, env: Env) {
         super(ctx, env);
@@ -34,12 +31,6 @@ export class PartitionDO extends DurableObject<Env> {
         this.log("PartitionDO", `constructor id=${ctx.id.toString()}`);
     }
 
-    private loadReplicasFromSql(): string[] {
-        const cursor = this.sql.exec(PartitionDOQueries.Replicas.GET_READABLE, ReplicaState.READABLE);
-        const rows = Array.from(cursor);
-        return rows.map((r: any) => r.id as string);
-    }
-
     private getReportLoadThreshold(): number {
         const v = this.env.REPORT_LOAD_THRESHOLD;
         if (v == null || v === "") return DEFAULT_REPORT_LOAD_THRESHOLD;
@@ -47,71 +38,137 @@ export class PartitionDO extends DurableObject<Env> {
         return isNaN(n) || n < 1 ? DEFAULT_REPORT_LOAD_THRESHOLD : n;
     }
 
-    private recordTrace(requestId: string | undefined, step: string, startMs: number, durationMs: number) {
+    private recordTrace(requestId: string | undefined, step: string, startMs: number, durationMs: number, attributes?: Record<string, string | number | boolean>) {
         if (!requestId || !this.env.TRACE_DO) return;
-        const event: TraceEvent = { requestId, step, startMs, durationMs };
+        const event: TraceEvent = { requestId, step, startMs, durationMs, attributes };
         const stub = this.env.TRACE_DO.get(this.env.TRACE_DO.idFromName(TRACE_DO_SINGLETON_NAME));
         this.ctx.waitUntil(stub.recordEvent(event));
-    }
-
-    async registerReplica(replicaId: string): Promise<void> {
-        this.log("PartitionDO", `registerReplica id=${replicaId}`);
-        this.sql.exec(PartitionDOQueries.Replicas.REGISTER, replicaId, ReplicaState.READABLE, Date.now());
-        this.replicasCache = this.loadReplicasFromSql();
-    }
-
-    async deregisterReplica(replicaId: string): Promise<void> {
-        this.log("PartitionDO", `deregisterReplica id=${replicaId}`);
-        this.sql.exec(PartitionDOQueries.Replicas.DEREGISTER, replicaId);
-        this.replicasCache = this.loadReplicasFromSql();
-    }
-
-    async getRoutingConfig(requestId?: string): Promise<RoutingTable> {
-        const startMs = 0;
-        const t0 = Date.now();
-        if (this.replicasCache === null) {
-            this.replicasCache = this.loadReplicasFromSql();
-        }
-        const replicaIds = this.replicasCache;
-        this.log("PartitionDO", `getRoutingConfig: ${replicaIds.length} readable replicas`);
-        this.recordTrace(requestId, "partition_get_routing", startMs, Date.now() - t0);
-        return {
-            version: Date.now(),
-            partitions: 100,
-            replicas: { 0: replicaIds }
-        };
     }
 
     async reportLoad(requests: number, requestId?: string): Promise<void> {
         const startMs = 0;
         const t0 = Date.now();
         this.loadCounter += requests;
-        this.log("PartitionDO", `reportLoad: counter=${this.loadCounter}`);
         const threshold = this.getReportLoadThreshold();
         if (this.loadCounter > threshold) {
             this.loadCounter = 0;
-            this.ctx.waitUntil(this.checkScaling());
         }
         this.recordTrace(requestId, "partition_report_load", startMs, Date.now() - t0);
     }
 
-    async checkScaling() {
-        const cursor = this.sql.exec(PartitionDOQueries.Replicas.COUNT_READABLE, ReplicaState.READABLE);
-        const count = (Array.from(cursor)[0] as any).count as number;
-        this.log("PartitionDO", `checkScaling: readable_replicas=${count}`);
-        if (count < 1) {
-            const newReplicaId = `partition-0-r${Date.now()}`;
-            this.log("PartitionDO", `checkScaling: provisioning new replica ${newReplicaId}`);
-            const standbyStub = this.env.SUB_DO.get(this.env.SUB_DO.idFromName("partition-0-standby"));
-            await standbyStub.init(Role.STANDBY);
-            await standbyStub.provisionReplica(newReplicaId);
+    private async _getItemLocally(doKey: string, requestId?: string): Promise<any | null> {
+        const tSql = Date.now();
+        const cursor = this.sql.exec(PartitionDOQueries.Items.GET_LATEST, doKey);
+        const row = Array.from(cursor)[0] as any;
+        this.recordTrace(requestId, "partition_sql_read", 0, Date.now() - tSql);
+
+        if (!row || (row.deleted as number) === 1) {
+            return null;
         }
+        return JSON.parse(row.value as string);
     }
 
-    /** List all replicas for observability */
-    async listReplicas(): Promise<{ id: string; state: string; lastSeen: number }[]> {
-        const cursor = this.sql.exec(PartitionDOQueries.Replicas.LIST_ALL);
-        const rows = Array.from(cursor) as any[];
-        return rows.map(r => ({ id: r.id, state: r.state, lastSeen: r.last_seen }));
+    async handleGetItem(doKey: string, requestId?: string, invokeTs?: number): Promise<any | null> {
+        const startMs = 0;
+        const t0 = Date.now();
+        if (invokeTs) this.recordTrace(requestId, "partition_queue", 0, t0 - invokeTs);
+
+        const item = await this._getItemLocally(doKey, requestId);
+
+        this.recordTrace(requestId, "partition_get_item", startMs, Date.now() - t0, { partition_source: item ? "sql" : "sql_miss" });
+        return item;
+    }
+
+    async handlePutItem(doKey: string, value: unknown, partitionId: number, tableName: string, requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string, invokeTs?: number): Promise<any> {
+        const startMs = 0;
+        const t0 = Date.now();
+        if (invokeTs) this.recordTrace(requestId, "partition_queue", 0, t0 - invokeTs);
+
+        if (conditionExpression) {
+            const currentItem = await this._getItemLocally(doKey, requestId);
+            try {
+                const pass = evaluateCondition(currentItem, conditionExpression, expressionAttributeNames, expressionAttributeValues);
+                if (!pass) throw new Error("The conditional request failed");
+            } catch (e: any) {
+                const err = new Error(e.message);
+                err.name = e.name === "ValidationError" ? "ValidationException" : "ConditionalCheckFailedException";
+                throw err;
+            }
+        }
+
+        const tSql = Date.now();
+        this.sql.exec(PartitionDOQueries.Items.INSERT, doKey, 1, JSON.stringify(value), 0);
+        this.recordTrace(requestId, "partition_sql_write", 0, Date.now() - tSql);
+
+        this.recordTrace(requestId, "partition_put_item", startMs, Date.now() - t0);
+        return {};
+    }
+
+    async handleDeleteItem(doKey: string, partitionId: number, tableName: string, requestId?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string, invokeTs?: number): Promise<any> {
+        const startMs = 0;
+        const t0 = Date.now();
+        if (invokeTs) this.recordTrace(requestId, "partition_queue", 0, t0 - invokeTs);
+
+        let currentItem: any = null;
+        if (conditionExpression || returnValues === "ALL_OLD") {
+            currentItem = await this._getItemLocally(doKey, requestId);
+        }
+
+        if (conditionExpression) {
+            try {
+                const pass = evaluateCondition(currentItem, conditionExpression, expressionAttributeNames, expressionAttributeValues);
+                if (!pass) throw new Error("The conditional request failed");
+            } catch (e: any) {
+                const err = new Error(e.message);
+                err.name = e.name === "ValidationError" ? "ValidationException" : "ConditionalCheckFailedException";
+                throw err;
+            }
+        }
+
+        const tSql = Date.now();
+        this.sql.exec(PartitionDOQueries.Items.INSERT, doKey, 1, null, 1);
+        this.recordTrace(requestId, "partition_sql_write", 0, Date.now() - tSql);
+
+        this.recordTrace(requestId, "partition_delete_item", startMs, Date.now() - t0);
+        if (returnValues === "ALL_OLD" && currentItem) return { Attributes: currentItem };
+        return {};
+    }
+
+    async handleUpdateItem(doKey: string, updates: Record<string, AttributeValueUpdate>, partitionId: number, tableName: string, requestId?: string, updateExpression?: string, conditionExpression?: string, expressionAttributeNames?: Record<string, string>, expressionAttributeValues?: Record<string, any>, returnValues?: string, invokeTs?: number): Promise<any> {
+        const startMs = 0;
+        const t0 = Date.now();
+        if (invokeTs) this.recordTrace(requestId, "partition_queue", 0, t0 - invokeTs);
+
+        let currentItem: Record<string, any> = (await this._getItemLocally(doKey, requestId)) || {};
+
+        if (conditionExpression) {
+            try {
+                const pass = evaluateCondition(Object.keys(currentItem).length > 0 ? currentItem : null, conditionExpression, expressionAttributeNames, expressionAttributeValues);
+                if (!pass) throw new Error("The conditional request failed");
+            } catch (e: any) {
+                const err = new Error(e.message);
+                err.name = e.name === "ValidationError" ? "ValidationException" : "ConditionalCheckFailedException";
+                throw err;
+            }
+        }
+
+        if (updateExpression) {
+            evaluateUpdateExpression(currentItem, updateExpression, expressionAttributeNames, expressionAttributeValues);
+        } else {
+            for (const [key, update] of Object.entries(updates)) {
+                const action = update.Action || 'PUT';
+                if (action === 'PUT') currentItem[key] = update.Value;
+                else if (action === 'DELETE') delete currentItem[key];
+            }
+        }
+
+        const tSql = Date.now();
+        this.sql.exec(PartitionDOQueries.Items.INSERT, doKey, 1, JSON.stringify(currentItem), 0);
+        this.recordTrace(requestId, "partition_sql_write", 0, Date.now() - tSql);
+
+        this.recordTrace(requestId, "partition_update_item", startMs, Date.now() - t0);
+
+        if (returnValues === "ALL_NEW") return { Attributes: currentItem };
+        return {};
     }
 }

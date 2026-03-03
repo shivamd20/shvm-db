@@ -1,23 +1,21 @@
 import { DurableObject } from "cloudflare:workers";
 import { PartitionDO } from "./partition-do";
-import { SubDO } from "./sub-do";
+
 import { TableRegistryDO } from "./table-registry-do";
 import { TraceDO } from "./trace-do";
 import { validateItemAgainstSchema, ValidationError, CreateTableSchema } from "./validation";
 import { MetadataService } from "./metadata-service";
 import { mapDynamoError } from "./error-mapping";
-import { CreateTableInput, RoutingTable, ReplicationMessage, Role, TableMetadata } from "./types";
+import { CreateTableInput, TableMetadata } from "./types";
 import { createLogger } from "./debug";
 import type { TraceEvent } from "./trace-types";
 
-export { PartitionDO, SubDO, TableRegistryDO, TraceDO };
+export { PartitionDO, TableRegistryDO, TraceDO };
 
 export interface Env {
 	PARTITION_DO: DurableObjectNamespace<PartitionDO>;
-	SUB_DO: DurableObjectNamespace<SubDO>;
 	TABLE_REGISTRY_DO: DurableObjectNamespace<TableRegistryDO>;
 	TRACE_DO: DurableObjectNamespace<TraceDO>;
-	REPLICATION_QUEUE: Queue;
 	SHVM_DEBUG?: string;
 	NUM_PARTITIONS?: number; // Added for central config mapping
 }
@@ -104,56 +102,7 @@ export default {
 		return new Response("Not Found", { status: 404 });
 	},
 
-	async queue(batch: MessageBatch<any>, env: Env): Promise<void> {
-		const log = createLogger(env);
-		const pKeys = [...new Set(batch.messages.map((m: any) => {
-			const msg = m.body;
-			const tableName = msg.tableName || "default";
-			return `${tableName}::partition-${msg.partitionId}`;
-		}))];
-
-		const routingData = new Map<string, RoutingTable>();
-		await Promise.all(pKeys.map(async (pKey) => {
-			if (routingData.has(pKey)) return;
-			const pStub = env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey));
-			const r = await pStub.getRoutingConfig();
-			routingData.set(pKey, r);
-		}));
-
-		const promises: Promise<void>[] = [];
-		for (const message of batch.messages) {
-			const msg = message.body;
-			const pId = msg.partitionId;
-			const tableName = msg.tableName || "default";
-			const pKey = `${tableName}::partition-${pId}`;
-
-			log("queue", `replication type=${msg.type} table=${tableName} partition=${pId} sk=${msg.sk} v=${msg.version}`);
-
-			if (msg.enqueuedTs && msg.requestId) {
-				const qLatency = Date.now() - msg.enqueuedTs;
-				const traceStub = env.TRACE_DO.get(env.TRACE_DO.idFromName(TRACE_DO_SINGLETON_NAME));
-				promises.push(traceStub.recordEvent({
-					requestId: msg.requestId, step: "replication_queue_latency", startMs: 0, durationMs: qLatency
-				}).catch(() => { }));
-			}
-
-			const standbyId = env.SUB_DO.idFromName(`${pKey}-standby`);
-			const standbyStub = env.SUB_DO.get(standbyId);
-			promises.push(standbyStub.init(Role.STANDBY).then(() => standbyStub.applyMutation(msg)));
-
-			const routing = routingData.get(pKey)!;
-			const replicas = routing.replicas[pId] || [];
-			log("queue", `partition ${pKey} replicas=${replicas.length}`);
-
-			for (const rId of replicas) {
-				const rStub = env.SUB_DO.get(env.SUB_DO.idFromString(rId));
-				promises.push(rStub.applyMutation(msg));
-			}
-		}
-
-		await Promise.allSettled(promises);
-	},
-} satisfies ExportedHandler<Env, ReplicationMessage>;
+} satisfies ExportedHandler<Env>;
 
 async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionContext, workerInvokeTs: number = Date.now(), isColdStart: boolean = false): Promise<Response> {
 	const log = createLogger(env);
@@ -237,37 +186,21 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	const tableName = body.TableName;
 	if (!tableName) throw new ValidationError("TableName is required");
 
-	type MetadataSource = "registry";
-	let metadata: TableMetadata;
-	let metaSource: MetadataSource;
-	let routing: RoutingTable;
-	let routingCacheHit: boolean = false;
 	let partitionId: number;
 	let pKey: string;
 
+	// Optimization: we could cache schema, but for now we fetch it
 	const metaStart = Date.now() - requestStartTs;
 	const metaResult = await metadataService.getTableMetadata(tableName);
-	metadata = metaResult.metadata;
-	metaSource = "registry";
-	addEvent("get_table_metadata", metaStart, Date.now() - requestStartTs - metaStart, { metadata_source: metaSource });
-	const pkDef1 = metadata.KeySchema.find(k => k.KeyType === "HASH");
-	if (!pkDef1) throw new Error("Table definition missing Partition Key");
-	const pkVal1 = body.Key?.[pkDef1.AttributeName] ?? body.Item?.[pkDef1.AttributeName];
-	const pkRaw1 = validateAndGetRawKey(pkVal1, pkDef1.AttributeName);
-	partitionId = hashPartitionKey(pkRaw1, env.NUM_PARTITIONS ?? 100);
-	pKey = `${tableName}::partition-${partitionId}`;
-	addEvent("hash_partition_key", Date.now() - requestStartTs, 0);
-	if (op === "GetItem") {
-		const routingStart = Date.now() - requestStartTs;
-		routing = await env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey)).getRoutingConfig(requestId);
-		addEvent("get_routing_config", routingStart, Date.now() - requestStartTs - routingStart, { routing_cache: "miss" });
-	} else {
-		routing = { version: 0, partitions: env.NUM_PARTITIONS ?? 100, replicas: {} };
-	}
-
+	const metadata = metaResult.metadata;
+	addEvent("get_table_metadata", metaStart, Date.now() - requestStartTs - metaStart, { metadata_source: "registry" });
 	const pkDef = metadata.KeySchema.find(k => k.KeyType === "HASH");
-	const pkVal = (op === "PutItem" ? body.Item : body.Key)?.[pkDef!.AttributeName];
-	const pkRaw = validateAndGetRawKey(pkVal, pkDef!.AttributeName);
+	if (!pkDef) throw new Error("Table definition missing Partition Key");
+	const pkVal = body.Key?.[pkDef.AttributeName] ?? body.Item?.[pkDef.AttributeName];
+	const pkRaw = validateAndGetRawKey(pkVal, pkDef.AttributeName);
+	partitionId = hashPartitionKey(pkRaw, env.NUM_PARTITIONS ?? 100);
+	pKey = `${tableName}::partition-${partitionId}`;
+	const pStub = env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey));
 
 	baseHeaders["X-SHIVAM-DB-PARTITION-ID-INTERNAL"] = String(partitionId);
 	baseHeaders["X-SHIVAM-DB-PARTITION-KEY"] = pKey;
@@ -276,7 +209,6 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	log("router", `PK=${pkRaw} -> partitionId=${partitionId} pKey=${pKey}`);
 
 	if (op === "PutItem" || op === "DeleteItem" || op === "UpdateItem") {
-		const leaderStub = env.SUB_DO.get(env.SUB_DO.idFromName(`${pKey}-leader`)) as any;
 		const opStart = Date.now() - requestStartTs;
 		if (op === "PutItem") {
 			validateItemAgainstSchema(body.Item, metadata);
@@ -285,8 +217,8 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			const skRaw = getRaw(skVal) || "default";
 			const doKey = `${pkRaw}#${skRaw}`;
 			baseHeaders["X-SHIVAM-DB-SK"] = skRaw;
-			baseHeaders["X-SHIVAM-DB-LEADER-DO"] = `${pKey}-leader`;
-			const res: any = await leaderStub.ensureLeaderAndPutItem(doKey, body.Item, partitionId, tableName, requestId, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues, Date.now());
+			baseHeaders["X-SHIVAM-DB-TARGET-DO"] = pKey;
+			const res: any = await pStub.handlePutItem(doKey, body.Item, partitionId, tableName, requestId, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues, Date.now());
 			addEvent("do_put_item", opStart, Date.now() - requestStartTs - opStart);
 			const resJson = JSON.stringify(res || {});
 			const totalMsWrite = Date.now() - requestStartTs;
@@ -300,7 +232,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			const skRaw = getRaw(skVal) || "default";
 			const doKey = `${pkRaw}#${skRaw}`;
 			baseHeaders["X-SHIVAM-DB-SK"] = skRaw;
-			const res: any = await leaderStub.ensureLeaderAndDeleteItem(doKey, partitionId, tableName, requestId, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues, Date.now());
+			const res: any = await pStub.handleDeleteItem(doKey, partitionId, tableName, requestId, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues, Date.now());
 			addEvent("do_delete_item", opStart, Date.now() - requestStartTs - opStart);
 			const resJson = JSON.stringify(res || {});
 			const totalMsWrite = Date.now() - requestStartTs;
@@ -315,12 +247,8 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			const doKey = `${pkRaw}#${skRaw}`;
 			baseHeaders["X-SHIVAM-DB-SK"] = skRaw;
 			const updates = body.AttributeUpdates || {};
-			const res: any = await leaderStub.ensureLeaderAndUpdateItem(doKey, updates, partitionId, tableName, requestId, body.UpdateExpression, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues, Date.now());
+			const res: any = await pStub.handleUpdateItem(doKey, updates, partitionId, tableName, requestId, body.UpdateExpression, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues, Date.now());
 			addEvent("do_update_item", opStart, Date.now() - requestStartTs - opStart);
-
-			ctx.waitUntil(
-				env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey)).getRoutingConfig().then(() => { })
-			);
 
 			const resJson = JSON.stringify(res || {});
 			const totalMsWrite = Date.now() - requestStartTs;
@@ -332,36 +260,18 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	}
 
 	if (op === "GetItem") {
-		const replicas = routing.replicas[partitionId] || [];
-		const routingTarget = replicas.length === 0 ? "leader" : "replica";
-		let readTarget: string;
-		let rStub: DurableObjectStub<SubDO>;
-		if (replicas.length === 0) {
-			const leaderId = `${pKey}-leader`;
-			rStub = env.SUB_DO.get(env.SUB_DO.idFromName(leaderId));
-			readTarget = leaderId;
-			log("router", `GetItem: no replicas, reading from leader ${leaderId}`);
-		} else {
-			const rId = replicas[Math.floor(Math.random() * replicas.length)];
-			rStub = env.SUB_DO.get(env.SUB_DO.idFromString(rId));
-			readTarget = rId;
-			log("router", `GetItem: reading from replica ${rId}`);
-		}
-
 		const skDef = metadata.KeySchema.find(k => k.KeyType === "RANGE");
 		const skVal = skDef ? body.Key[skDef.AttributeName] : undefined;
 		const skRaw = getRaw(skVal) || "default";
 		const doKey = `${pkRaw}#${skRaw}`;
 
 		baseHeaders["X-SHIVAM-DB-SK"] = skRaw;
-		baseHeaders["X-SHIVAM-DB-READ-TARGET"] = readTarget;
+		baseHeaders["X-SHIVAM-DB-READ-TARGET"] = pKey;
 
 		const doStart = Date.now() - requestStartTs;
-		const item = replicas.length === 0
-			? await rStub.ensureLeaderAndGetItem(doKey, requestId, Date.now())
-			: await rStub.getItem(doKey, requestId, Date.now());
+		const item = await pStub.handleGetItem(doKey, requestId, Date.now());
 		const doEnd = Date.now() - requestStartTs;
-		addEvent("do_get_item", doStart, doEnd - doStart, { routing_target: routingTarget });
+		addEvent("do_get_item", doStart, doEnd - doStart);
 		const totalMs = Date.now() - requestStartTs;
 		const coldPath = true;
 		const resObj = item !== undefined && item !== null ? { Item: item } : {};
@@ -372,7 +282,6 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 
 		ctx.waitUntil((async () => {
 			try {
-				const pStub = env.PARTITION_DO.get(env.PARTITION_DO.idFromName(pKey));
 				await pStub.reportLoad(1, requestId);
 			} catch (e) {
 				log.warn("router", "autoscale hook failed (non-critical)", e);

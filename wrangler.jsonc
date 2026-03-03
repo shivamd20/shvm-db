@@ -33,7 +33,6 @@
 			"tag": "v3",
 			"new_sqlite_classes": [
 				"PartitionDO",
-				"SubDO",
 				"TableRegistryDO"
 			]
 		},
@@ -55,31 +54,12 @@
 				"class_name": "PartitionDO"
 			},
 			{
-				"name": "SUB_DO",
-				"class_name": "SubDO"
-			},
-			{
 				"name": "TABLE_REGISTRY_DO",
 				"class_name": "TableRegistryDO"
 			},
 			{
 				"name": "TRACE_DO",
 				"class_name": "TraceDO"
-			}
-		]
-	},
-	"queues": {
-		"producers": [
-			{
-				"binding": "REPLICATION_QUEUE",
-				"queue": "shvm-db-replication-queue"
-			}
-		],
-		"consumers": [
-			{
-				"queue": "shvm-db-replication-queue",
-				"max_batch_size": 5,
-				"max_batch_timeout": 1
 			}
 		]
 	},
