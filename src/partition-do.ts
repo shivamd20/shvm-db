@@ -67,9 +67,13 @@ export class PartitionDO extends DurableObject<Env> {
         this.recordTrace(requestId, "partition_cache_read", 0, Date.now() - tCache, { hit: cacheRes ? true : false });
 
         if (cacheRes) {
-            const data = await cacheRes.json() as any;
-            if (data._deleted) return null;
-            return data;
+            try {
+                const data = await cacheRes.json() as any;
+                if (data._deleted) return null;
+                return data;
+            } catch (err) {
+                this.log("PartitionDO", `Cache parse error: ${err}`);
+            }
         }
 
         const tSql = Date.now();
@@ -87,7 +91,7 @@ export class PartitionDO extends DurableObject<Env> {
         const cacheData = result ? JSON.stringify(result) : JSON.stringify({ _deleted: true });
         const resToCache = new Response(cacheData, {
             headers: {
-                "Cache-Control": "max-age=60"
+                "Cache-Control": "max-age=300"
             }
         });
         this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
@@ -127,7 +131,7 @@ export class PartitionDO extends DurableObject<Env> {
 
         const cacheReq = this.getCacheKey(doKey);
         const resToCache = new Response(JSON.stringify(value), {
-            headers: { "Cache-Control": "max-age=60" }
+            headers: { "Cache-Control": "max-age=300" }
         });
         this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
 
@@ -161,7 +165,7 @@ export class PartitionDO extends DurableObject<Env> {
 
         const cacheReq = this.getCacheKey(doKey);
         const resToCache = new Response(JSON.stringify({ _deleted: true }), {
-            headers: { "Cache-Control": "max-age=60" }
+            headers: { "Cache-Control": "max-age=300" }
         });
         this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
 
@@ -203,7 +207,7 @@ export class PartitionDO extends DurableObject<Env> {
 
         const cacheReq = this.getCacheKey(doKey);
         const resToCache = new Response(JSON.stringify(currentItem), {
-            headers: { "Cache-Control": "max-age=60" }
+            headers: { "Cache-Control": "max-age=300" }
         });
         this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
 

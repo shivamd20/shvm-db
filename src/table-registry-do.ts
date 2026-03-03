@@ -43,7 +43,7 @@ export class TableRegistryDO extends DurableObject {
 
         const cacheReq = new Request(`https://shvm-db.local/table/${input.TableName}`);
         const resToCache = new Response(JSON.stringify(metadata), {
-            headers: { "Cache-Control": "max-age=60" }
+            headers: { "Cache-Control": "max-age=300" }
         });
         this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
 
@@ -66,7 +66,7 @@ export class TableRegistryDO extends DurableObject {
 
         const cacheReq = new Request(`https://shvm-db.local/table/${tableName}`);
         const resToCache = new Response(JSON.stringify({ _deleted: true }), {
-            headers: { "Cache-Control": "max-age=60" }
+            headers: { "Cache-Control": "max-age=300" }
         });
         this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
 
@@ -77,16 +77,18 @@ export class TableRegistryDO extends DurableObject {
         const cacheReq = new Request(`https://shvm-db.local/table/${tableName}`);
         const cacheRes = await (caches as any).default.match(cacheReq);
         if (cacheRes) {
-            const data = await cacheRes.json() as any;
-            if (data._deleted) return null;
-            return data;
+            try {
+                const data = await cacheRes.json() as any;
+                if (data._deleted) return null;
+                return data;
+            } catch (err) { }
         }
 
         const metadata = await this.ctx.storage.get<TableMetadata>(tableName);
 
         const cacheData = metadata ? JSON.stringify(metadata) : JSON.stringify({ _deleted: true });
         const resToCache = new Response(cacheData, {
-            headers: { "Cache-Control": "max-age=60" }
+            headers: { "Cache-Control": "max-age=300" }
         });
         this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
 

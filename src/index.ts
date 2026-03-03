@@ -49,11 +49,17 @@ function validateAndGetRawKey(v: any, attrName: string): string {
 }
 
 function buildTraceSummary(traceEvents: TraceEvent[], totalMs: number): string {
-	const seg: Record<string, number> = { total_ms: totalMs };
+	const seg: Record<string, number | boolean | string> = { total_ms: totalMs };
 	for (const e of traceEvents) {
 		if (e.step === "request") continue;
 		const key = e.step.replace(/-/g, "_") + "_ms";
-		seg[key] = (seg[key] ?? 0) + e.durationMs;
+		seg[key] = ((seg[key] as number) ?? 0) + e.durationMs;
+
+		if (e.attributes) {
+			for (const [k, v] of Object.entries(e.attributes)) {
+				seg[`${e.step.replace(/-/g, "_")}_${k}`] = v;
+			}
+		}
 	}
 	return Object.entries(seg).map(([k, v]) => `${k}=${v}`).join(",");
 }
