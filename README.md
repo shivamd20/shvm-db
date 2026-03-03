@@ -111,32 +111,29 @@ If it smells like Spanner, it is out.
 
 ## MVP Architecture
 
-### Core Simplification (Revised)
+### Core Simplification (v3)
 
-The system uses a **Two-Layer Architecture** to separate orchestration from storage.
+The system uses a **pure, deterministic routing architecture** to separate table orchestration from partition storage.
 
 1.  **TableRegistryDO (The Global Registry)**:
     *   A single global DO (`global-registry`) that stores metadata for all tables.
     *   Ensures cross-account table uniqueness and handles `CreateTable` / `ListTables`.
+    *   Fetched *once* by the worker isolate securely and cached, keeping it completely out of the hot path for item operations.
 
-2.  **PartitionDO (The Orchestrator)**:
-    *   Maps a Partition Key (PK) to a "logical partition".
-    *   Does **NOT** store data.
-    *   Maintains the `RoutingTable` (Leader ID, Replica IDs).
-    *   Handles autoscaling decisions (spawning new replicas).
+2.  **PartitionDO (The Data Plane)**:
+    *   Maps deterministically to a `TableName + PartitionKey` hash slice.
+    *   Owns exactly one SQLite database.
+    *   Serves as the sole authority and storage executor for that partition.
 
-3.  **SubDO (The Data Plane)**:
-    *   Where the actual data lives.
-    *   **Leader SubDO**: Handles all writes for a PK. Serializes transactions.
-    *   **Replica SubDOs**: Read-only copies that tail the Leader via queue.
-    *   Each SubDO owns one SQLite database.
-
-> **One Partition Key → One PartitionDO (Orchestrator) → N SubDOs (Storage)**
+> **One Partition Key → SHA-256 Hash → One PartitionDO (Storage Executor)**
 
 There is:
-*   No in-memory hashmap (Routing is calculated hash + DO lookup)
-*   No Bloom filter
-*   SQLite as the **only read/write path** inside SubDOs.
+*   No in-memory routing map
+*   No control-plane lookup during item access
+*   No background queues for data replication
+*   SQLite as the **only read/write path** inside the PartitionDO.
+
+This ensures strict API consistency, 0ms routing overhead, and eliminates premature internal queue-based replication complexity.
 
 This ensures correctness, debuggability, and eliminates premature optimization.
 
@@ -154,54 +151,43 @@ No auxiliary caches or layers exist in MVP.
 
 ---
 
-### SQLite Schema (MVP)
+### SQLite Schema (v3)
 
-````sql
-CREATE TABLE items (
-  sk TEXT PRIMARY KEY,
-  value BLOB
-);
-
-CREATE INDEX idx_sk ON items(sk);
 ```sql
-CREATE TABLE items (
-  sk TEXT PRIMARY KEY,
+CREATE TABLE items_v3 (
+  id TEXT PRIMARY KEY,
+  version INTEGER,
   value BLOB,
-  version INTEGER
+  deleted INTEGER DEFAULT 0
 );
+```
 
-CREATE INDEX idx_sk ON items(sk);
-````
-
-* Sorted by `SK`
+* `id` is the concatenated `pk#sk`
 * `version` reserved for future OCC
+* Single row lookups for `GetItem`
 
 ---
 
 ### Write Path (PutItem)
 
-1.  **Router**: Hashes PK → determines `PartitionDO` ID.
-2.  **Orchestration**: Checks `PartitionDO` (cached) for the current **Leader SubDO** ID.
-3.  **Action**: Forwards request to **Leader SubDO**.
-4.  **Transaction**: Leader begins SQLite transaction.
-5.  **Commit**: `INSERT OR REPLACE` item.
-6.  **Replication**: Leader enqueues mutation to `ReplicationQueue` (for Standby/Replicas).
-7.  **Ack**: Returns success to client.
+1.  **API Gateway**: Worker hashes `tableName + PK` → `PartitionDO ID`.
+2.  **Action**: Worker forwards request payload and AST direct to **PartitionDO**.
+3.  **Transaction**: DO evaluates condition expressions (if any).
+4.  **Commit**: DO executes `INSERT OR REPLACE` into SQLite.
+5.  **Ack**: Returns success to client.
 
-Durability relies on SQLite WAL + Cloudflare Queue guarantees.
+Durability relies on SQLite WAL + Cloudflare Durable Object storage guarantees.
 
 ---
 
 ### Read Path (GetItem)
 
-1.  **Router**: Hashes PK → `PartitionDO`.
-2.  **Orchestration**: Fetches `RoutingTable` (list of active Replicas).
-3.  **Selection**: Randomly selects a **Replica SubDO** (or Leader if no replicas).
-4.  **Action**: Forwards request to selected SubDO.
-5.  **Execution**: SubDO executes SQLite `SELECT`.
-6.  **Return**: Result returned to client.
+1.  **API Gateway**: Worker hashes `tableName + PK` → `PartitionDO ID`.
+2.  **Action**: Worker forwards request to **PartitionDO**.
+3.  **Execution**: DO executes SQLite `SELECT`.
+4.  **Return**: Result returned to client.
 
-No caching, no overlays. Just routing and SQLite.
+No caching, no multi-hop orchestration. Just deterministic edge routing and SQLite.
 
 ---
 
@@ -396,50 +382,19 @@ These are intentional MVP constraints.
 
 ## Detailed Bottleneck Breakdown
 
-When running `shvm-db` at high throughput, the system hits hard ceilings due to the intentional MVP constraints and the underlying Cloudflare Workers runtime. Here is exactly why the limits exist:
+When running `shvm-db` at high throughput, the system hits hard ceilings due to intentional architecture choices:
 
 1. **Single-Threaded Execution**: Each Durable Object runs on a single JavaScript isolate. A "hot partition" (many writes to the same PK) forces all requests sequentially through the same single-threaded Event Loop.
-2. **SQLite Lock Contention**: While SQLite is fast, every `PutItem` or `UpdateItem` executes inside a SQLite transaction. During the commit phase, the lock prevents other async tasks in the DO from mutating the DB. 
-3. **RPC Overhead**: The architecture relies on jumping boundaries: `Worker -> PartitionDO -> SubDO Leader`. Each boundary hop adds latency (usually ~1-2ms), meaning a single operation has a baseline floor it cannot dip below.
-4. **Queue Replication Lag**: Standard Cloudflare Queues are used to replicate data from Leader to Replicas. Under massive load, the queue delivery can back up, increasing replica lag to several seconds instead of milliseconds.
+2. **SQLite Lock Contention**: While SQLite is fast, every mutating request executes inside an `INSERT OR REPLACE`. During the commit phase, the lock prevents other async tasks in the DO from mutating the DB concurrently without serialization.
+3. **Partition Boundary Cap**: Once a single hash slice receives more than ~1,000 requests per second, the DO will become CPU bound. This reflects DynamoDB's original 1,000 WCU / partition hard cap.
 
 ---
 
-## Roadmap / Future Work
+## Roadmap & Changelog
 
-### Phase 0.5: WAL Offload (Next Immediate Step)
+Please view [CHANGELOG.md](./CHANGELOG.md) for details on the v3 architecture overhaul and what changed since MVP.
 
-* External write-ahead log in object storage
-* Faster acknowledgements
-* Crash replay independent of SQLite
-
-### Phase 2: Partition Scaling
-
-* Sort-key range splitting
-* Dual-writes during migration
-* Router updates
-
-### Phase 3: Indexes
-
-* LSI via same SQLite
-* GSI via separate Durable Objects
-
-### Phase 4: Replication
-
-* Multi-region WAL replication
-* Read replicas
-* Eventually consistent global tables
-
-### Phase 5: Transactions
-
-* Two-phase commit (best effort)
-* Partition-scoped transactions first
-
-### Phase 5: Storage Engine Evolution
-
-* Replace SQLite with LSM engine
-* Compaction scheduling
-* Columnar experiments
+For the list of future enhancements, upcoming architecture features, and difficult open problems you can contribute to, please see [ROADMAP.md](./ROADMAP.md).
 
 ---
 

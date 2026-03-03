@@ -33,6 +33,7 @@
 			"tag": "v3",
 			"new_sqlite_classes": [
 				"PartitionDO",
+				"SubDO",
 				"TableRegistryDO"
 			]
 		},
@@ -40,6 +41,12 @@
 			"tag": "v4",
 			"new_sqlite_classes": [
 				"TraceDO"
+			]
+		},
+		{
+			"tag": "v5",
+			"deleted_classes": [
+				"SubDO"
 			]
 		}
 	],
