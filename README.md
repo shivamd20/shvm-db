@@ -147,7 +147,7 @@ This ensures correctness, debuggability, and eliminates premature optimization.
 * SQLite runs in WAL mode
 * SQLite is the **source of truth**
 
-A write-through Cloudflare Cache API layer (LRU) exists in front of SQLite for fast reads.
+A write-through Cloudflare Cache API layer (LRU) exists in the API Edge Gateway in front of SQLite for fast reads, completely bypassing the invocation of Durable Objects upon cache hits.
 
 ---
 
@@ -183,12 +183,12 @@ Durability relies on SQLite WAL + Cloudflare Durable Object storage guarantees.
 ### Read Path (GetItem)
 
 1.  **API Gateway**: Worker hashes `tableName + PK` → `PartitionDO ID`.
-2.  **Action**: Worker forwards request to **PartitionDO**.
-3.  **Cache Check**: DO checks Cloudflare Cache API (LRU). If hit, returns instantly.
-4.  **Execution (Miss)**: DO executes SQLite `SELECT` and populates cache.
-5.  **Return**: Result returned to client.
+2.  **Cache Check**: Edge Worker checks Cloudflare Cache API (via `CacheManager`). If hit, returns instantly to client, without waking DO.
+3.  **Action (Miss)**: Worker forwards request to **PartitionDO**.
+4.  **Execution**: DO executes SQLite `SELECT` and returns. 
+5.  **Return**: Worker catches DO response, uses `ctx.waitUntil` to populate Edge Cache, and returns to client.
 
-Write-through caching ensures strong consistency while maximizing read throughput.
+This Edge-level Cache (GetItem: 5-minute TTL, schemas: 2-hour TTL) enforces strong consistency via synchronous write-throughs while minimizing DO compute overhead.
 
 ---
 

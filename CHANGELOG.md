@@ -2,14 +2,15 @@
 
 All notable changes to **shvm-db** will be documented in this file.
 
-## [Unreleased] - Cloudflare Cache API Integration
+## [Unreleased] - Cloudflare Cache API Edge Integration
 
 ### Added
-- **Write-Through Caching:** Integrated `caches.default` across `PartitionDO` and `TableRegistryDO`. Reads attempt to hit the Cloudflare Cache API (LRU) before hitting SQLite. Mutations (Put, Update, Delete) force a cache refresh (`cache.put`) to preserve strong consistency.
-- **Trace Metrics:** Updated tracing in `PartitionDO` to measure cache behavior and hits vs misses.
+- **Edge Write-Through Caching:** Created a new `CacheManager` abstraction (`src/cache.ts`) using `caches.default`. Reads (`GetItem`, `DescribeTable`) are checked at the API Gateway Edge Worker, completely bypassing the Durable Object on cache hits (saving latency and DO invocations). 
+- **Trace Metrics:** Updated tracing in the Edge Layer to accurately report `cache_read` metrics and duration.
+- **Extended Metadata TTL:** Enhanced Table Registry metadata caching with an extended 2-hour TTL.
 
 ### Changed
-- **Read Scalability:** Replaced planned logic for DO Replica Nodes with Cloudflare Cache API offloading, saving massive compute complexity.
+- **DO Simplification:** Removed caching logic from `PartitionDO` and `TableRegistryDO` to strictly isolate them as state/storage executors.
 
 ## [v0.3.0] - Architecture v3: Unlimited Partitions & Deterministic Routing
 

@@ -9,6 +9,7 @@ import { mapDynamoError } from "./error-mapping";
 import { CreateTableInput, TableMetadata } from "./types";
 import { createLogger } from "./debug";
 import type { TraceEvent } from "./trace-types";
+import { CacheManager } from "./cache";
 
 export { PartitionDO, TableRegistryDO, TraceDO };
 
@@ -140,6 +141,7 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	const body = await request.json() as any;
 	const op = target.split(".").pop() || "unknown";
 	const metadataService = new MetadataService(env);
+	const cacheManager = new CacheManager(env);
 
 	const baseHeaders: Record<string, string> = {
 		"Content-Type": "application/x-amz-json-1.0",
@@ -175,8 +177,21 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 		const listResult = await registry.listTables(body.Limit, body.ExclusiveStartTableName);
 		return new Response(JSON.stringify(listResult), { headers: baseHeaders });
 	}
+
+	const metaStart = Date.now() - requestStartTs;
+
 	if (op === "DescribeTable") {
+		const cachedSchema = await cacheManager.getItem<TableMetadata>("table", body.TableName);
+		if (cachedSchema) {
+			addEvent("cache_read", metaStart, Date.now() - requestStartTs - metaStart, { hit: true, type: "table" });
+			return new Response(JSON.stringify({ Table: cachedSchema }), { headers: baseHeaders });
+		}
+
 		const { metadata } = await metadataService.getTableMetadata(body.TableName);
+
+		// Cache for 2 hours (7200 seconds)
+		await cacheManager.putItem(ctx, "table", body.TableName, metadata, 7200);
+
 		return new Response(JSON.stringify({ Table: metadata }), { headers: baseHeaders });
 	}
 
@@ -195,11 +210,18 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 	let partitionId: number;
 	let pKey: string;
 
-	// Optimization: we could cache schema, but for now we fetch it
-	const metaStart = Date.now() - requestStartTs;
-	const metaResult = await metadataService.getTableMetadata(tableName);
-	const metadata = metaResult.metadata;
-	addEvent("get_table_metadata", metaStart, Date.now() - requestStartTs - metaStart, { metadata_source: "registry" });
+	let metadata: TableMetadata;
+
+	const cachedSchema = await cacheManager.getItem<TableMetadata>("table", tableName);
+	if (cachedSchema) {
+		metadata = cachedSchema;
+		addEvent("get_table_metadata", metaStart, Date.now() - requestStartTs - metaStart, { metadata_source: "cache" });
+	} else {
+		const metaResult = await metadataService.getTableMetadata(tableName);
+		metadata = metaResult.metadata;
+		await cacheManager.putItem(ctx, "table", tableName, metadata, 7200);
+		addEvent("get_table_metadata", metaStart, Date.now() - requestStartTs - metaStart, { metadata_source: "registry" });
+	}
 	const pkDef = metadata.KeySchema.find(k => k.KeyType === "HASH");
 	if (!pkDef) throw new Error("Table definition missing Partition Key");
 	const pkVal = body.Key?.[pkDef.AttributeName] ?? body.Item?.[pkDef.AttributeName];
@@ -225,6 +247,10 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			baseHeaders["X-SHIVAM-DB-SK"] = skRaw;
 			baseHeaders["X-SHIVAM-DB-TARGET-DO"] = pKey;
 			const res: any = await pStub.handlePutItem(doKey, body.Item, partitionId, tableName, requestId, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues, Date.now());
+
+			// Write-through cache up to edge after DO confirms write
+			await cacheManager.putItem(ctx, "item", doKey, body.Item, 300);
+
 			addEvent("do_put_item", opStart, Date.now() - requestStartTs - opStart);
 			const resJson = JSON.stringify(res || {});
 			const totalMsWrite = Date.now() - requestStartTs;
@@ -239,6 +265,10 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			const doKey = `${pkRaw}#${skRaw}`;
 			baseHeaders["X-SHIVAM-DB-SK"] = skRaw;
 			const res: any = await pStub.handleDeleteItem(doKey, partitionId, tableName, requestId, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues, Date.now());
+
+			// Write tombstone to edge cache
+			await cacheManager.deleteItem(ctx, "item", doKey, 300);
+
 			addEvent("do_delete_item", opStart, Date.now() - requestStartTs - opStart);
 			const resJson = JSON.stringify(res || {});
 			const totalMsWrite = Date.now() - requestStartTs;
@@ -255,6 +285,14 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 			const updates = body.AttributeUpdates || {};
 			const res: any = await pStub.handleUpdateItem(doKey, updates, partitionId, tableName, requestId, body.UpdateExpression, body.ConditionExpression, body.ExpressionAttributeNames, body.ExpressionAttributeValues, body.ReturnValues, Date.now());
 			addEvent("do_update_item", opStart, Date.now() - requestStartTs - opStart);
+
+			// We must ask cacheManager to fetch the ALL_NEW variant or update it
+			// For simplicity in the worker, if returnValues wasn't ALL_NEW, we delete it from cache to force a re-fetch since DO handles evaluating updates 
+			if (body.ReturnValues === "ALL_NEW" && res?.Attributes) {
+				await cacheManager.putItem(ctx, "item", doKey, res.Attributes, 300);
+			} else {
+				await cacheManager.deleteItem(ctx, "item", doKey, 300); // Forces cache invalidation
+			}
 
 			const resJson = JSON.stringify(res || {});
 			const totalMsWrite = Date.now() - requestStartTs;
@@ -275,9 +313,29 @@ async function handleDynamoRequest(request: Request, env: Env, ctx: ExecutionCon
 		baseHeaders["X-SHIVAM-DB-READ-TARGET"] = pKey;
 
 		const doStart = Date.now() - requestStartTs;
-		const item = await pStub.handleGetItem(doKey, requestId, Date.now());
-		const doEnd = Date.now() - requestStartTs;
-		addEvent("do_get_item", doStart, doEnd - doStart);
+
+		const { hit, deleted, data } = await cacheManager.getItemRaw("item", doKey);
+
+		let item: any = null;
+
+		if (hit) {
+			addEvent("cache_read", doStart, Date.now() - requestStartTs - doStart, { hit: true, type: "item" });
+			if (!deleted) item = data;
+		} else {
+			addEvent("cache_read", doStart, Date.now() - requestStartTs - doStart, { hit: false, type: "item" });
+			const doInvokeStart = Date.now() - requestStartTs;
+			item = await pStub.handleGetItem(doKey, requestId, Date.now());
+			const doEnd = Date.now() - requestStartTs;
+			addEvent("do_get_item", doInvokeStart, doEnd - doInvokeStart);
+
+			// Store into cache on miss
+			if (item) {
+				await cacheManager.putItem(ctx, "item", doKey, item, 300);
+			} else {
+				await cacheManager.deleteItem(ctx, "item", doKey, 300);
+			}
+		}
+
 		const totalMs = Date.now() - requestStartTs;
 		const coldPath = true;
 		const resObj = item !== undefined && item !== null ? { Item: item } : {};

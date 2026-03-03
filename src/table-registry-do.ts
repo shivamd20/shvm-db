@@ -41,12 +41,6 @@ export class TableRegistryDO extends DurableObject {
 
         await this.ctx.storage.put(input.TableName, metadata);
 
-        const cacheReq = new Request(`https://shvm-db.local/table/${input.TableName}`);
-        const resToCache = new Response(JSON.stringify(metadata), {
-            headers: { "Cache-Control": "max-age=300" }
-        });
-        this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
-
         return { TableDescription: metadata };
     }
 
@@ -64,34 +58,11 @@ export class TableRegistryDO extends DurableObject {
         // Actually delete from storage
         await this.ctx.storage.delete(tableName);
 
-        const cacheReq = new Request(`https://shvm-db.local/table/${tableName}`);
-        const resToCache = new Response(JSON.stringify({ _deleted: true }), {
-            headers: { "Cache-Control": "max-age=300" }
-        });
-        this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
-
         return { TableDescription: originalMetadata };
     }
 
     async getTable(tableName: string): Promise<TableMetadata | null> {
-        const cacheReq = new Request(`https://shvm-db.local/table/${tableName}`);
-        const cacheRes = await (caches as any).default.match(cacheReq);
-        if (cacheRes) {
-            try {
-                const data = await cacheRes.json() as any;
-                if (data._deleted) return null;
-                return data;
-            } catch (err) { }
-        }
-
         const metadata = await this.ctx.storage.get<TableMetadata>(tableName);
-
-        const cacheData = metadata ? JSON.stringify(metadata) : JSON.stringify({ _deleted: true });
-        const resToCache = new Response(cacheData, {
-            headers: { "Cache-Control": "max-age=300" }
-        });
-        this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
-
         return metadata || null;
     }
 

@@ -61,21 +61,6 @@ export class PartitionDO extends DurableObject<Env> {
     }
 
     private async _getItemLocally(doKey: string, requestId?: string): Promise<any | null> {
-        const cacheReq = this.getCacheKey(doKey);
-        const tCache = Date.now();
-        const cacheRes = await (caches as any).default.match(cacheReq);
-        this.recordTrace(requestId, "partition_cache_read", 0, Date.now() - tCache, { hit: cacheRes ? true : false });
-
-        if (cacheRes) {
-            try {
-                const data = await cacheRes.json() as any;
-                if (data._deleted) return null;
-                return data;
-            } catch (err) {
-                this.log("PartitionDO", `Cache parse error: ${err}`);
-            }
-        }
-
         const tSql = Date.now();
         const cursor = this.sql.exec(PartitionDOQueries.Items.GET_LATEST, doKey);
         const row = Array.from(cursor)[0] as any;
@@ -87,14 +72,6 @@ export class PartitionDO extends DurableObject<Env> {
         } else {
             result = JSON.parse(row.value as string);
         }
-
-        const cacheData = result ? JSON.stringify(result) : JSON.stringify({ _deleted: true });
-        const resToCache = new Response(cacheData, {
-            headers: {
-                "Cache-Control": "max-age=300"
-            }
-        });
-        this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
 
         return result;
     }
@@ -129,12 +106,6 @@ export class PartitionDO extends DurableObject<Env> {
         this.sql.exec(PartitionDOQueries.Items.INSERT, doKey, 1, JSON.stringify(value), 0);
         this.recordTrace(requestId, "partition_sql_write", 0, Date.now() - tSql);
 
-        const cacheReq = this.getCacheKey(doKey);
-        const resToCache = new Response(JSON.stringify(value), {
-            headers: { "Cache-Control": "max-age=300" }
-        });
-        this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
-
         this.recordTrace(requestId, "partition_put_item", 0, Date.now() - t0);
         return {};
     }
@@ -162,12 +133,6 @@ export class PartitionDO extends DurableObject<Env> {
         const tSql = Date.now();
         this.sql.exec(PartitionDOQueries.Items.INSERT, doKey, 1, null, 1);
         this.recordTrace(requestId, "partition_sql_write", 0, Date.now() - tSql);
-
-        const cacheReq = this.getCacheKey(doKey);
-        const resToCache = new Response(JSON.stringify({ _deleted: true }), {
-            headers: { "Cache-Control": "max-age=300" }
-        });
-        this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
 
         this.recordTrace(requestId, "partition_delete_item", 0, Date.now() - t0);
         if (returnValues === "ALL_OLD" && currentItem) return { Attributes: currentItem };
@@ -204,12 +169,6 @@ export class PartitionDO extends DurableObject<Env> {
         const tSql = Date.now();
         this.sql.exec(PartitionDOQueries.Items.INSERT, doKey, 1, JSON.stringify(currentItem), 0);
         this.recordTrace(requestId, "partition_sql_write", 0, Date.now() - tSql);
-
-        const cacheReq = this.getCacheKey(doKey);
-        const resToCache = new Response(JSON.stringify(currentItem), {
-            headers: { "Cache-Control": "max-age=300" }
-        });
-        this.ctx.waitUntil((caches as any).default.put(cacheReq, resToCache));
 
         this.recordTrace(requestId, "partition_update_item", 0, Date.now() - t0);
 
